@@ -54,3 +54,81 @@ def get_attack_timeline(hours: int = 24) -> List[dict]:
     ORDER BY hour DESC;
     """
     return {"query": query}
+
+
+# IOC Database Queries
+def create_ioc(ioc: dict) -> dict:
+    """Create new IOC indicator in database"""
+    query = f"""
+    INSERT INTO ioc_indicators (ioc_type, value, confidence, source, related_attacker_ip, related_session_id)
+    VALUES ('{ioc['ioc_type']}', '{ioc['value']}', {ioc.get('confidence', 1.0)}, 
+            '{ioc.get('source', 'scan')}', '{ioc.get('related_attacker_ip', '')}', '{ioc.get('related_session_id', '')}')
+    RETURNING id, value, hit_count;
+    """
+    return {"query": query, "operation": "INSERT"}
+
+
+def get_ioc_by_value(value: str) -> Optional[dict]:
+    """Get IOC by value - used for deduplication"""
+    query = f"""
+    SELECT id, ioc_type, value, hit_count, confidence, source, first_seen, last_seen
+    FROM ioc_indicators 
+    WHERE value = '{value}';
+    """
+    return {"query": query, "operation": "SELECT"}
+
+
+def increment_ioc_hit(ioc_id: int) -> dict:
+    """Increment hit count and update last_seen for existing IOC"""
+    query = f"""
+    UPDATE ioc_indicators 
+    SET hit_count = hit_count + 1, last_seen = NOW()
+    WHERE id = {ioc_id}
+    RETURNING hit_count;
+    """
+    return {"query": query, "operation": "UPDATE"}
+
+
+def get_top_iocs(limit: int = 20) -> List[dict]:
+    """Get top IOCs by hit count"""
+    query = f"""
+    SELECT ioc_type, value, hit_count, source, first_seen
+    FROM ioc_indicators
+    ORDER BY hit_count DESC
+    LIMIT {limit};
+    """
+    return [{"query": query}]
+
+
+def get_iocs_by_type(ioc_type: str, limit: int = 50) -> List[dict]:
+    """Get IOCs filtered by type"""
+    query = f"""
+    SELECT id, value, hit_count, confidence, source, first_seen, last_seen
+    FROM ioc_indicators
+    WHERE ioc_type = '{ioc_type}'
+    ORDER BY hit_count DESC
+    LIMIT {limit};
+    """
+    return [{"query": query}]
+
+
+def search_ioc_in_commands(ioc_value: str) -> List[dict]:
+    """Find commands containing this IOC value"""
+    query = f"""
+    SELECT session_id, command, timestamp
+    FROM commands
+    WHERE command ILIKE '%{ioc_value}%'
+    ORDER BY timestamp DESC;
+    """
+    return [{"query": query}]
+
+
+def search_ioc_in_payloads(ioc_value: str) -> List[dict]:
+    """Find attack payloads containing this IOC value"""
+    query = f"""
+    SELECT session_id, attack_type, payload, timestamp
+    FROM attacks
+    WHERE payload ILIKE '%{ioc_value}%'
+    ORDER BY timestamp DESC;
+    """
+    return [{"query": query}]

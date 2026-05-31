@@ -44,3 +44,16 @@ class Attack(BaseModel):
     ioc_value: Optional[str] = None
     ioc_type: Optional[str] = None
     severity: int = 0
+
+
+class IOCIndicator(BaseModel):
+    """Persisted IOC indicator in database"""
+    ioc_type: str  # hash, ip, domain, url
+    value: str
+    first_seen: datetime = Field(default_factory=datetime.utcnow)
+    last_seen: Optional[datetime] = None
+    confidence: float = 1.0
+    source: str = "scan"
+    hit_count: int = 1
+    related_attacker_ip: Optional[str] = None
+    related_session_id: Optional[str] = None
