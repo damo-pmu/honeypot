@@ -1,6 +1,6 @@
 """Response API endpoints - exposes decoy response engine"""
 from fastapi import APIRouter, HTTPException
-from typing import Optional
+from typing import Optional, List
 from pydantic import BaseModel
 from datetime import datetime
 
@@ -14,12 +14,44 @@ class ResponseRequest(BaseModel):
     interaction_count: int = 0
 
 
+class ThreatAnalyzeRequest(BaseModel):
+    commands: List[str]
+
+
 class ResponseOutput(BaseModel):
     session_id: str
     decision: str
     template: Optional[str]
     content: Optional[str]
     timestamp: datetime
+
+
+class ThreatAnalysisOutput(BaseModel):
+    threat_class: str
+    confidence: float
+    indicators: List[str]
+
+
+@router.post("/analyze", response_model=ThreatAnalysisOutput)
+def analyze_threat(request: ThreatAnalyzeRequest):
+    """Analyze commands for threat classification - uses rule-based or LLM"""
+    from src.response.llm_classifier import classify_threat
+    from src.response.safety import SafetyIsolator
+    
+    # Sanitize commands before LLM
+    isolator = SafetyIsolator()
+    safe_commands = []
+    for cmd in request.commands[-10:]:
+        sanitized = isolator.sanitize_command(cmd)
+        if sanitized:
+            safe_commands.append(sanitized)
+    
+    result = classify_threat(safe_commands, use_llm=False)
+    return ThreatAnalysisOutput(
+        threat_class=result.threat_class.value,
+        confidence=result.confidence,
+        indicators=result.indicators
+    )
 
 
 @router.post("/generate", response_model=ResponseOutput)
@@ -33,7 +65,7 @@ def generate_response(request: ResponseRequest):
         session_id=request.session_id,
         attacker_ip=request.attacker_ip,
         threat_class=request.threat_class,
-        confidence=0.5,  # Would come from classifier
+        confidence=0.5,
         interaction_count=request.interaction_count
     )
     
@@ -60,13 +92,22 @@ def generate_response(request: ResponseRequest):
 def list_templates():
     """List available decoy templates"""
     from src.response.router import RESPONSE_TEMPLATES
-    return {"templates": list(RESPONSE_TEMPLATES.keys())}
+    from src.response.safety import SafetyIsolator
+    return {
+        "templates": list(SafetyIsolator.ALLOWED_TEMPLATES.keys())
+    }
 
 
 @router.get("/decoy/{template}")
 def get_decoy(template: str, interaction_level: int = 0):
     """Get full decoy environment for template"""
     from src.response.fake_env import get_decoy_by_template
+    from src.response.safety import SafetyIsolator
+    
+    # Validate template name
+    isolator = SafetyIsolator()
+    if template not in isolator.ALLOWED_TEMPLATES:
+        raise HTTPException(status_code=404, detail="Template not in allowlist")
     
     result = get_decoy_by_template(template, interaction_level)
     if not result:
