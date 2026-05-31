@@ -9,9 +9,9 @@ from src.api.endpoints.commands import router as commands_router
 from src.api.endpoints.behavior import router as behavior_router
 from src.api.endpoints.analytics import router as analytics_router
 from src.api.endpoints.enrichment import router as enrichment_router
-from src.infrastructure.observability.metrics import metrics_endpoint
 from src.api.endpoints.ioc import router as ioc_router
 from src.api.endpoints.response import router as response_router
+from src.api.endpoints.dashboard import router as dashboard_router
 
 app = FastAPI(
     title="Honeypot Threat Intelligence API",
@@ -35,6 +35,7 @@ app.include_router(analytics_router)
 app.include_router(enrichment_router)
 app.include_router(ioc_router)
 app.include_router(response_router)
+app.include_router(dashboard_router)
 
 @app.get("/health")
 def health():

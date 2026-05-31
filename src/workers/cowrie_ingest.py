@@ -176,6 +176,12 @@ def ingest_logs():
                         "command": command
                     })
                     
+                    # Emit to dashboard (no auth needed for internal worker)
+                    send_to_api("/dashboard/emit", {
+                        "event_type": "command",
+                        "data": {"session_id": session_id, "ip": src_ip, "command": command[:100]}
+                    })
+                    
                     # Scan for IOCs in command
                     process_command_with_ioc(command, session_id, src_ip)
                     
