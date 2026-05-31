@@ -26,8 +26,8 @@ class ResponseDecision(BaseModel):
     session_id: str
     attacker_ip: str
     response_type: ResponseType
-    template_name: Optional[str]
-    content: Optional[str]
+    template_name: Optional[str] = None
+    content: Optional[str] = None
     reason: str
     use_adversarial: bool = False  # For AI detection
     timestamp: datetime = datetime.utcnow()
@@ -72,7 +72,7 @@ def decide_response(
         return ResponseDecision(
             session_id=session_id,
             attacker_ip=attacker_ip,
-            response_type=ResponseType.CHALLENGE,
+            response_type=ResponseType.CHALLENGE_RESPONSE,
             template_name="ai_challenge/cognitive_trap",
             reason="Potential AI agent - challenge response",
             use_adversarial=True  # Trigger adversarial prompt

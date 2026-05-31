@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
-"""Cowrie events → Honeypot API worker with IOC scanning"""
+"""Cowrie events → Honeypot API worker with IOC scanning and response engine"""
 import json
 import time
 import os
 from pathlib import Path
 import requests
-from typing import Optional
+from typing import Optional, List
 
 API_URL = os.getenv("API_URL", "http://api:8000")
 COWRIE_LOG = os.getenv("COWRIE_LOG", "/cowrie/var/log/cowrie.json")
+
+# Session tracking for response engine
+session_commands: dict = {}
 
 
 def parse_cowrie_event(line: str) -> dict:
@@ -35,13 +38,54 @@ def scan_for_iocs(text: str) -> dict:
     
     hash_patterns = re.compile(r'\b[a-fA-F0-9]{32}\b|\b[a-fA-F0-9]{40}\b|\b[a-fA-F0-9]{64}\b')
     ip_patterns = re.compile(r'\b(?:\d{1,3}\.){3}\d{1,3}\b')
-    url_patterns = re.compile(r'https?://[^\s<>\"{}|\\^`\[\]]+')
+    url_patterns = re.compile(r'https?://[^\s<>"{}|\\^`\[\]]+')
     
     return {
         "hashes": list(set(hash_patterns.findall(text))),
         "ips": list(set(ip_patterns.findall(text))),
         "urls": list(set(url_patterns.findall(text)))
     }
+
+
+def get_threat_class(commands: List[str]) -> str:
+    """Quick threat classification - no LLM in hot path"""
+    cmd_str = " ".join(commands).lower()
+    
+    if any(t in cmd_str for t in ["nmap", "masscan", "nikto", "sqlmap"]):
+        return "AUTOMATED_SCANNER"
+    elif any(t in cmd_str for t in ["wget", "curl"]) and "http" in cmd_str:
+        return "MALWARE_DOWNLOAD"
+    elif len(commands) > 5 and all(len(c) < 20 for c in commands):
+        return "POSSIBLE_AI_AGENT"
+    return "UNKNOWN"
+
+
+def trigger_decoy_response(session_id: str, attacker_ip: str, threat_class: str, interaction_count: int):
+    """Trigger decoy response based on threat classification"""
+    # Import here to avoid circular deps
+    from src.response.router import decide_response, get_response_content
+    
+    decision = decide_response(
+        session_id=session_id,
+        attacker_ip=attacker_ip,
+        threat_class=threat_class,
+        confidence=0.8,
+        interaction_count=interaction_count
+    )
+    
+    if decision.response_type.value != "terminate" and decision.template_name:
+        content = get_response_content(decision.template_name)
+        if content:
+            # Log response to API (for audit trail)
+            send_to_api("/response/responses/log", {
+                "session_id": session_id,
+                "attacker_ip": attacker_ip,
+                "template": decision.template_name,
+                "content": content,
+                "threat_class": threat_class
+            })
+            return content
+    return None
 
 
 def process_command_with_ioc(command: str, session_id: str, src_ip: str):
@@ -120,6 +164,12 @@ def ingest_logs():
                     session_id = f"{src_ip}:{src_port}"
                     command = event["command"]
                     
+                    # Track commands for threat classification
+                    if session_id not in session_commands:
+                        session_commands[session_id] = []
+                    session_commands[session_id].append(command)
+                    interaction_count = len(session_commands[session_id])
+                    
                     # Send command
                     send_to_api("/commands", {
                         "session_id": session_id,
@@ -128,6 +178,10 @@ def ingest_logs():
                     
                     # Scan for IOCs in command
                     process_command_with_ioc(command, session_id, src_ip)
+                    
+                    # Trigger decoy response based on threat class
+                    threat_class = get_threat_class(session_commands[session_id])
+                    response = trigger_decoy_response(session_id, src_ip, threat_class, interaction_count)
                 
                 elif "download" in event:
                     # Handle file downloads

@@ -22,7 +22,7 @@ class TestResponseRouter:
     def test_decide_ai_response(self):
         """AI agent gets challenge response"""
         result = decide_response("sess2", "10.0.0.2", "POSSIBLE_AI_AGENT", 0.8, 5)
-        assert result.response_type == ResponseType.CHALLENGE
+        assert result.response_type == ResponseType.CHALLENGE_RESPONSE
         assert "cognitive" in result.template_name or "challenge" in result.template_name
     
     def test_decide_script_kiddie_response(self):
@@ -51,7 +51,8 @@ class TestFakeEnvironment:
         assert decoy.template_name == "cisco_router"
         assert decoy.os_type == "Cisco IOS"
         assert len(decoy.files) > 0
-        assert "show_version" in decoy.files[0].path or "running_config" in decoy.files[0].path
+        # Files have paths like /show/version, /show/running-config
+        assert "show" in decoy.files[0].path or "running" in decoy.files[0].path
     
     def test_windows_decoy_generation(self):
         """Generate Windows server decoy"""

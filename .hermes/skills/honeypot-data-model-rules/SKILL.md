@@ -76,6 +76,12 @@ CREATE INDEX idx_table_session_id ON table_name(session_id);
 CREATE INDEX idx_table_created_at ON table_name(created_at DESC);
 ```
 
+### 8. Response Engine Integration (see docs/F8-response-engine-plan.md)
+The response engine uses these templates via `router.py`:
+- cisco_router/show_version, cisco_router/running_config
+- windows_server/credentials, jenkins_ci/config
+- ai_challenge/cognitive_trap (for POSSIBLE_AI_AGENT detection)
+
 ## Pitfalls
 - ❌ Forgetting FK constraints leads to orphaned data
 - ❌ Missing created_at breaks audit trails

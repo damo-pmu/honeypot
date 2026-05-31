@@ -26,35 +26,19 @@ Attacker → Honeypot Connection → Behavior Analysis → Decision Engine → R
 - Output: Command response template
 - Rules engine based on threat class
 
-### 2. Fake Environment Generator (`src/response/fake_env.py`)
-- Generate realistic fake filesystem
-- Fake credentials / config files
-- Fake sensitive data (mimic real infrastructure)
-- Templates based on protocol (SSH/Telnet)
-
-### 3. Behavior Detector (`src/detection/ai_detector.py`)
+### 2. Behavior Detector (`src/detection/behavior.py`)
 - AI fingerprinting patterns:
   - Unusual command sequences
   - Too-perfect typos
   - Systematic enumeration
   - Timing patterns (too regular)
 
-### 4. Decoy Templates (`docker/decoy/templates/`)
-```
-/templates/
-  /cisco_router/
-    - show_version.txt
-    - running-config.txt
-    - credential_dump.txt
-  /windows_server/
-    - sam.txt
-    - ntds.dit.sample
-    - shadow copy artifacts
-  /jenkins_instance/
-    - config.xml
-    - credentials.xml
-    - plugins/
-```
+### 3. Response Templates (inline in code - NO separate files)
+Templates are defined in `src/response/router.py` `RESPONSE_TEMPLATES` dict:
+- cisco_router/show_version, cisco_router/running_config
+- windows_server/credentials (fake creds: Administrator:Summer2024!)
+- jenkins_ci/config (fake Jenkins config)
+- ai_challenge/cognitive_trap (for AI detection)
 
 ### 5. Response Storage (`src/infrastructure/database/responses.py`)
 - Table `responses` - log all responses sent
@@ -90,10 +74,8 @@ POST /response/trigger-decoy/{template}
 | SCRIPT_KIDDIE | Easy wins (fake creds) | LOW |
 
 ## Files à créer
-- `src/response/router.py` - Decision engine
-- `src/response/fake_env.py` - Decoy generator
-- `src/response/safety.py` - Safety checks
-- `src/response/templates/*.json` - Response templates
-- `src/api/endpoints/response.py` - API routes
-- `migrations/003_responses_tables.sql` - DB schema
-- `tests/test_response_engine.py` - Tests
+- `src/response/router.py` ✅ - Decision engine
+- `src/response/safety.py` ✅ - Safety checks  
+- `src/api/endpoints/response.py` ✅ - API routes (add `/responses/log` endpoint)
+- `migrations/003_responses_tables.sql` - DB schema for responses table
+- `tests/test_response_engine.py` ✅ - Tests

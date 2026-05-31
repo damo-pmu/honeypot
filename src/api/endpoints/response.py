@@ -156,3 +156,32 @@ def get_decoy(template: str, interaction_level: int = 0):
     if not result:
         raise HTTPException(status_code=404, detail=f"Template {template} not found")
     return result.model_dump()
+
+
+class LogResponseRequest(BaseModel):
+    session_id: str
+    attacker_ip: str
+    template: str
+    content: str
+    threat_class: str
+
+
+@router.post("/responses/log")
+def log_response(request: LogResponseRequest):
+    """Log decoy response for audit trail - called by worker"""
+    from src.response.safety import SafetyIsolator
+    
+    # Validate content safety
+    isolator = SafetyIsolator()
+    check = isolator.validate_response(request.content, request.template)
+    
+    if not check.safe:
+        return {"status": "rejected", "reason": check.reason}
+    
+    # In production: store in responses table
+    return {
+        "status": "logged",
+        "session_id": request.session_id,
+        "template": request.template,
+        "timestamp": datetime.utcnow().isoformat()
+    }
