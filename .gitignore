@@ -1,4 +1,5 @@
 .env.ci
+.env
 *.pem
 secrets/
 # PROJECT_MEMORY.md versionné - voir CIABOOTSTRAP.md pour notes internes
