@@ -110,25 +110,28 @@ def _llm_classify(commands: List[str]) -> ThreatAnalysis:
     from langchain_core.prompts import ChatPromptTemplate
     from langchain_core.output_parsers import PydanticOutputParser
     
-    # Use local model path
+    # Sanitize commands before LLM
+    sanitized = " ".join(c.replace("{", "").replace("}", "") for c in commands[-10:])
+    
     model_path = os.getenv("LOCAL_LLM_MODEL", "/models/gpt4all-lora-quantized.bin")
     
     if not os.path.exists(model_path):
-        # Fallback to rule-based
         return _rule_based_classify(commands)
     
     try:
-        # Would use GPT4All or LlamaCpp here
-        # Simplified for now
+        # Try LangChain with local model
+        from langchain_community.llms import GPT4All
+        
+        llm = GPT4All(model=model_path, max_tokens=512, temperature=0.1)
         prompt = ChatPromptTemplate.from_template(CLASSIFIER_PROMPT)
         parser = PydanticOutputParser(pydantic_object=ThreatAnalysis)
         
-        # This is a placeholder - real implementation uses local LLM
-        # Never send raw attacker data to external APIs
-        return _rule_based_classify(commands)
+        chain = prompt | llm | parser
+        result = chain.invoke({"commands": sanitized})
+        
+        return result if isinstance(result, ThreatAnalysis) else _rule_based_classify(commands)
         
     except Exception:
-        # Always fallback on error
         return ThreatAnalysis(
             threat_class=ThreatClass.UNKNOWN,
             confidence=0.3,

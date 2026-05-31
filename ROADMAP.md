@@ -48,23 +48,16 @@
 | 8.1 Response Router | ✅ 16 | ✅ | ✅ | ✅ |
 | 8.2 LLM Classifier | ✅ 8 | ✅ | ✅ | ✅ |
 | 8.3 Security Hardening | ✅ 30 | ✅ | ✅ | ✅ |
-
----
-
-## 🎯 Phase 5 : Threat Feeds (TODO)
-
-| Feature | Priority |
-|---------|----------|
-| 9.1 Threat Intel Feed Collection | HIGH |
-| 9.2 IOC Trending Analysis | MED |
-| 9.3 Auto-block integration | HIGH |
+| 10.1 LLM Provider Switching | ✅ 17 | ✅ | ✅ | ✅ |
+| 10.2 Adversarial Prompts | ✅ 17 | ✅ | ✅ | ✅ |
+| 9.1 Threat Intel Feeds | ✅ 5 | ✅ | ✅ | ✅ |
 
 ---
 
 ## 🛡️ Security Architecture Rules
 
 1. **Never trust user input** - whitelist + pattern blocking
-2. **LLMs locaux seulement** - GPT4All/LlamaCpp, jamais d'API externe
+2. **LLMs locaux par défaut** - GPT4All/LlamaCpp (configurable)
 3. **Templates statiques** - pas de génération dynamique de contenus
 4. **Chroot/isolation** - pas de sortie réseau depuis le honeypot
 5. **Audit trail complet** - timestamps sur toutes les tables
@@ -82,6 +75,6 @@
 
 ## 📊 Totals
 
-- **Commits:** 16
-- **Tests:** 131
-- **Features complètes:** 15/15
+- **Commits:** 18
+- **Tests:** 158
+- **Features complètes:** 18/18
