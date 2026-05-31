@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 # Import routers
 from src.api.endpoints.attackers import router as attackers_router
+from src.api.endpoints.sessions import router as sessions_router
 
 app = FastAPI(
     title="Honeypot Threat Intelligence API",
@@ -20,6 +21,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(attackers_router)
+app.include_router(sessions_router)
 
 @app.get("/health")
 def health():
