@@ -13,6 +13,9 @@ from src.api.endpoints.ioc import router as ioc_router
 from src.api.endpoints.response import router as response_router
 from src.api.endpoints.dashboard import router as dashboard_router
 
+# Import audit middleware
+from src.api.middleware.audit import AuditMiddleware
+
 app = FastAPI(
     title="Honeypot Threat Intelligence API",
     version="0.1.0"
@@ -25,6 +28,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Audit logging middleware
+app.add_middleware(AuditMiddleware)
 
 # Include routers
 app.include_router(attackers_router)
