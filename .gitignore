@@ -1,0 +1,4 @@
+.env.ci
+*.pem
+secrets/
+PROJECT_MEMORY.md
