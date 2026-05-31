@@ -13,6 +13,8 @@ from ..middleware.session import (
     create_session, get_session, clear_session, require_auth,
     DASHBOARD_PASSWORD, LOGIN_HTML
 )
+# Import audit logger
+from ...utils.audit_logger import log_auth_event, log_dashboard_event
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
@@ -237,10 +239,14 @@ async def login(request: Request, response: Response):
     """Login with password form"""
     form = await request.form()
     password = form.get("password", "")
+    client_ip = request.client.host if request.client else "unknown"
     
     if password == DASHBOARD_PASSWORD:
-        create_session(response)
+        session = create_session(response)
+        log_auth_event("login", True, client_ip, {"method": "form"})
         return RedirectResponse("/dashboard/", status_code=303)
+    
+    log_auth_event("login_failed", False, client_ip, {"reason": "invalid_password"})
     return RedirectResponse("/dashboard/?error=1", status_code=303)
 
 
@@ -248,8 +254,12 @@ async def login(request: Request, response: Response):
 def logout(request: Request, response: Response):
     """Logout and clear session"""
     session = get_session(request)
+    client_ip = request.client.host if request.client else "unknown"
+    
     if session:
         clear_session(response, session)
+        log_auth_event("logout", True, client_ip, {})
+    
     return RedirectResponse("/dashboard/", status_code=303)
 
 

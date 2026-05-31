@@ -14,6 +14,16 @@ services:
     environment:
       - DATABASE_URL=postgresql://honeypot:secret@postgres:5432/honeypot
       - REDIS_URL=redis://redis:6379
+      - DASHBOARD_PASSWORD=${DASHBOARD_PASSWORD}
+      - AUDIT_LOG_PATH=/app/logs/audit.log
+    volumes:
+      - api_logs:/app/logs
+      - api_data:/app/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   # Database
   postgres:
@@ -24,6 +34,7 @@ services:
       POSTGRES_PASSWORD: secret
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - postgres_logs:/var/lib/postgresql/data/log
       - ./migrations:/migrations
     ports:
       - "5432:5432"
@@ -33,12 +44,18 @@ services:
     image: redis:7-alpine
     ports:
       - "6379:6379"
+    volumes:
+      - redis_data:/data
+      - redis_logs:/var/log/redis
 
   rabbitmq:
     image: rabbitmq:3-management-alpine
     ports:
       - "5672:5672"
       - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+      - rabbitmq_logs:/var/log/rabbitmq
 
   # SSH/Telnet Honeypot (Cowrie)
   cowrie:
@@ -50,6 +67,7 @@ services:
       - "23:23"      # Telnet
     volumes:
       - cowrie_logs:/cowrie/var/log
+      - cowrie_data:/cowrie/var/lib
     environment:
       - HONEYPOT_API_URL=http://api:8000/events
 
@@ -63,6 +81,9 @@ services:
       - api
     volumes:
       - cowrie_logs:/cowrie/var/log:ro
+      - worker_logs:/app/logs
+    environment:
+      - AUDIT_LOG_PATH=/app/logs/audit.log
 
   # Prom/Grafana (minimal)
   prometheus:
@@ -70,15 +91,30 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
 
   grafana:
     image: grafana/grafana-enterprise
     ports:
       - "3000:3000"
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_PATHS_DATA=/var/lib/grafana
+    volumes:
+      - grafana_data:/var/lib/grafana
 
 volumes:
   postgres_data:
+  postgres_logs:
+  redis_data:
+  redis_logs:
+  rabbitmq_data:
+  rabbitmq_logs:
   cowrie_logs:
+  cowrie_data:
+  worker_logs:
+  api_logs:
+  api_data:
+  prometheus_data:
+  grafana_data:
