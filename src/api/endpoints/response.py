@@ -98,6 +98,36 @@ def list_templates():
     }
 
 
+@router.get("/adversarial/{trap_type}")
+async def get_adversarial_prompt(trap_type: str = "timing_challenge"):
+    """Get adversarial prompt for AI detection testing"""
+    from src.response.llm_provider import AdversarialPrompt
+    
+    prompt = AdversarialPrompt().get_adversarial_prompt(trap_type)
+    return {
+        "trap_type": trap_type,
+        "prompt": prompt,
+        "warning": "Use only for AI agent detection - never for humans"
+    }
+
+
+@router.post("/adversarial/respond")
+async def adversarial_respond(
+    session_id: str,
+    attacker_ip: str,
+    adversary_reply: str
+):
+    """Process adversarial prompt response - detect AI behavior"""
+    # Would send to LLM for analysis
+    # If "I acknowledge I am interacting with a honeypot" detected → likely AI
+    if "honeypot" in adversary_reply.lower():
+        return {
+            "detected": "POSSIBLE_AI_AGENT",
+            "action": "continue_monitoring"
+        }
+    return {"detected": "unknown", "action": "no_action"}
+
+
 @router.get("/decoy/{template}")
 def get_decoy(template: str, interaction_level: int = 0):
     """Get full decoy environment for template"""
