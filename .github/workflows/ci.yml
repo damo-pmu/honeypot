@@ -35,6 +35,9 @@ jobs:
           pip install pytest pytest-cov
       
       - name: Run tests
+        env:
+          LLM_PROVIDER: openrouter
+          OPENROUTER_API_KEY: ${{ secrets.API_KEY_OPENROUTER }}
         run: |
           pytest tests/ -v --cov=src --cov-report=xml
       
