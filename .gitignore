@@ -2,3 +2,4 @@
 *.pem
 secrets/
 # PROJECT_MEMORY.md versionné - voir CIABOOTSTRAP.md pour notes internes
+# /docs est la seule documentation publique - le reste est privé
