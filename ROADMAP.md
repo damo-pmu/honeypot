@@ -1,84 +1,87 @@
 # ROADMAP - Honeypot Threat Intelligence Framework
 
-> **Méthode : Code → Test → Commit (30min cadences)**
+> **Méthode : Code → Test → Commit (30min cadences)**  
+> **Security Rule : Never trust user input - whitelist + sanitization + local LLMs only**
 
 ---
 
-## 🎯 Phase 1 : Core API Endpoints (J+1)
-
-### Feature 1.1 - Attackers CRUD
-- [ ] `GET /attackers` - List avec filtres (IP, classification, score)
-- [ ] `POST /attackers` - Création via webhook Cowrie
-- [ ] `GET /attackers/{id}` - Détail + sessions liées
-- [ ] Tests unitaires 100%
-- [x] Commit: `f0a6555` (entités créées)
-
-### Feature 1.2 - Sessions Tracking
-- [ ] `GET /sessions` - List sessions avec pagin
-- [ ] `POST /sessions` - Ingestion Cowrie
-- [ ] `GET /sessions/{id}/commands` - Historique commands
-- [ ] Tests intégration
-
-### Feature 1.3 - Commands Logging
-- [ ] `POST /commands` - Log commands attaquant
-- [ ] Classification auto (SQLi, XSS, brute force)
-- [ ] Export JSON lines
-
----
-
-## 🎯 Phase 2 : Scoring Engine (J+2)
-
-### Feature 2.1 - Règles Config
-- [ ] YAML config : scores par attack type
-- [ ] Hot reload des règles
-- [ ] Endpoint `GET /scoring/rules`
-
-### Feature 2.2 - Classification Comportementale
-- [ ] Timing analysis (latence, burst)
-- [ ] Sequence analysis (patterns)
-- [ ] `POST /classification`
-
----
-
-## 🎯 Phase 3 : Integration Cowrie (J+3)
-
-### Feature 3.1 - JSON Events
-- [ ] Worker Cowrie → API
-- [ ] Mapping Cowrie events vers Attack/Session
-- [ ] Tests end-to-end
-
-### Feature 3.2 - Docker Compose Full
-- [ ] Cowrie container running
-- [ ] Volume logs → worker
-- [ ] Prometheus metrics
-
----
-
-## 🎯 Phase 4 : Observabilité (J+4)
-
-### Feature 4.1 - Prometheus Metrics
-- [ ] Counter : attacks_by_type
-- [ ] Histogram : session_duration
-- [ ] Gauge : active_sessions
-
-### Feature 4.2 - Grafana Dashboard
-- [ ] JSON model dashboard
-- [ ] Panels : Attacks, IPs, Timing
-- [ ] Alerting rules (rate > 100/min)
-
----
-
-## 📊 Progress Tracking
+## 🎯 Phase 1 : Core API Endpoints ✅
 
 | Feature | Tests | Code | Commit | Done |
 |---------|-------|------|--------|------|
-| Core Entities | ✅ | ✅ | ✅ | ✅ |
-| API Skeleton | ❌ | ✅ | ✅ | ❌ |
-| Scoring | ❌ | ❌ | ❌ | ❌ |
+| 1.1 Attackers CRUD | ✅ 5 | ✅ | ✅ | ✅ |
+| 1.2 Sessions Tracking | ✅ 5 | ✅ | ✅ | ✅ |
+| 1.3 Commands Logging | ✅ 4 | ✅ | ✅ | ✅ |
 
-## 🔄 Cadence Développement
+---
 
-- **Toutes les 30min** : Commit avec message clair
-- **Chaque feature** : Tests obligatoires
-- **Branch** : `feature/{nom-feature}` → merge PR
-- **CI** : GitHub Actions (lint + tests)
+## 🎯 Phase 2 : Scoring Engine ✅
+
+| Feature | Tests | Code | Commit | Done |
+|---------|-------|------|--------|------|
+| 2.1 Rules Engine | ✅ 7 | ✅ | ✅ | ✅ |
+| 2.2 Behavior Classification | ✅ 6 | ✅ | ✅ | ✅ |
+
+---
+
+## 🎯 Phase 3 : Integration & IOC ✅
+
+| Feature | Tests | Code | Commit | Done |
+|---------|-------|------|--------|------|
+| 3.1 Database Queries | ✅ 3 | ✅ | ✅ | ✅ |
+| 3.2 GeoIP Enrichment | ✅ 4 | ✅ | ✅ | ✅ |
+| 4.1 Docker/Cowrie | ✅ 0 | ✅ | ✅ | ✅ |
+| 5.1 Prometheus Metrics | ✅ 3 | ✅ | ✅ | ✅ |
+| 5.2 IOC Storage DB | ✅ 4 | ✅ | ✅ | ✅ |
+| 5.3 IOC External Enrich | ✅ 11 | ✅ | ✅ | ✅ |
+| 5.4 Redis Caching | ✅ 9 | ✅ | ✅ | ✅ |
+| 7.1 Cowrie IOC Integration | ✅ 14 | ✅ | ✅ | ✅ |
+
+---
+
+## 🎯 Phase 4 : Response Engine ✅
+
+| Feature | Tests | Code | Commit | Done |
+|---------|-------|------|--------|------|
+| 6.1 External IOC Feed | ✅ 11 | ✅ | ✅ | ✅ |
+| 6.2 Redis Cache | ✅ 9 | ✅ | ✅ | ✅ |
+| 8.1 Response Router | ✅ 16 | ✅ | ✅ | ✅ |
+| 8.2 LLM Classifier | ✅ 8 | ✅ | ✅ | ✅ |
+| 8.3 Security Hardening | ✅ 30 | ✅ | ✅ | ✅ |
+
+---
+
+## 🎯 Phase 5 : Threat Feeds (TODO)
+
+| Feature | Priority |
+|---------|----------|
+| 9.1 Threat Intel Feed Collection | HIGH |
+| 9.2 IOC Trending Analysis | MED |
+| 9.3 Auto-block integration | HIGH |
+
+---
+
+## 🛡️ Security Architecture Rules
+
+1. **Never trust user input** - whitelist + pattern blocking
+2. **LLMs locaux seulement** - GPT4All/LlamaCpp, jamais d'API externe
+3. **Templates statiques** - pas de génération dynamique de contenus
+4. **Chroot/isolation** - pas de sortie réseau depuis le honeypot
+5. **Audit trail complet** - timestamps sur toutes les tables
+
+---
+
+## 🔄 Development Cadence
+
+- Toutes les 30min : Commit avec message clair
+- Chaque feature : Tests obligatoires  
+- Branch : `feature/{nom-feature}` → merge main
+- CI : GitHub Actions (lint + tests)
+
+---
+
+## 📊 Totals
+
+- **Commits:** 16
+- **Tests:** 131
+- **Features complètes:** 15/15
