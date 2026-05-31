@@ -14,7 +14,7 @@ from datetime import datetime
 def handle_connection(client_socket, addr):
     """Handle incoming connection with controlled /dev/urandom flood"""
     try:
-        client_socket.send(b"[honeypot] Connection logged\n")
+        client_socket.send(b"\nPassword: ")
         time.sleep(1)
         
         # Controlled sample - max 1KB
