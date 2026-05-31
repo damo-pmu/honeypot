@@ -55,10 +55,14 @@ def analyze_threat(request: ThreatAnalyzeRequest):
 
 
 @router.post("/generate", response_model=ResponseOutput)
-def generate_response(request: ResponseRequest):
-    """Generate decoy response based on attacker profile"""
+async def generate_response(request: ResponseRequest):
+    """Generate decoy response based on attacker profile
+    
+    For AI agents: can return adversarial prompts instead of fake env
+    """
     from src.response.router import decide_response, get_response_content
     from src.response.safety import SafetyIsolator
+    from src.response.llm_provider import AdversarialPrompt, LLMConfig, query_llm_api
     
     # Get decision
     decision = decide_response(
@@ -71,11 +75,20 @@ def generate_response(request: ResponseRequest):
     
     # Get content
     content = None
-    if decision.template_name:
+    
+    # Adversarial mode for AI detection
+    if decision.use_adversarial:
+        config = LLMConfig()
+        prompt = AdversarialPrompt().get_adversarial_prompt("timing_challenge")
+        # In production: would query LLM for adversarial response
+        content = prompt
+    elif decision.template_name:
         content = get_response_content(decision.template_name)
-        # Validate
+    
+    # Validate
+    if content:
         safety = SafetyIsolator()
-        check = safety.validate_response(content or "", decision.template_name or "")
+        check = safety.validate_response(content, decision.template_name or "adversarial")
         if not check.safe:
             raise HTTPException(status_code=400, detail=f"Safety violation: {check.reason}")
     

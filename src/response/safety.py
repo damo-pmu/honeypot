@@ -59,7 +59,9 @@ class SafetyIsolator:
         "jenkins_ci/config",
         "jenkins_ci/users",
         "jenkins_ci/secrets",
-        "ai_challenge/cognitive_trap"
+        "ai_challenge/cognitive_trap",
+        "adversarial/timing_challenge",
+        "adversarial/context_trap"
     }
     
     def validate_response(self, content: str, template: str) -> SafetyCheck:
