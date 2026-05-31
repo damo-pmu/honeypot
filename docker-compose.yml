@@ -42,7 +42,9 @@ services:
 
   # SSH/Telnet Honeypot (Cowrie)
   cowrie:
-    image: cowrie/cowrie:latest
+    build:
+      context: ./docker/cowrie
+      dockerfile: Dockerfile
     ports:
       - "2222:2222"  # SSH
       - "23:23"      # Telnet
@@ -50,6 +52,17 @@ services:
       - cowrie_logs:/cowrie/var/log
     environment:
       - HONEYPOT_API_URL=http://api:8000/events
+
+  # Worker: Cowrie events → API
+  worker:
+    build:
+      context: .
+      dockerfile: docker/worker/Dockerfile
+    depends_on:
+      - cowrie
+      - api
+    volumes:
+      - cowrie_logs:/cowrie/var/log:ro
 
   # Prom/Grafana (minimal)
   prometheus:
