@@ -11,7 +11,7 @@ from collections import Counter
 # Import session auth
 from ..middleware.session import (
     create_session, get_session, clear_session, require_auth,
-    DASHBOARD_PASSWORD, LOGIN_HTML
+    DASHBOARD_PASSWORD, LOGIN_HTML, _sessions
 )
 # Import audit logger
 from ...utils.audit_logger import log_auth_event, log_dashboard_event
@@ -304,3 +304,14 @@ def emit_event_json(request: EventRequest):
     """Emit event via JSON body (no auth for internal worker)"""
     add_event(request.event_type, request.data)
     return {"status": "emitted"}
+
+
+@router.get("/debug/status")
+def debug_status():
+    """Debug endpoint - system status for autonomous debugging"""
+    return {
+        "events_pending": len(_dashboard_events),
+        "event_types": dict(_event_counts),
+        "sessions_active": len(_sessions),
+        "memory_usage": "ok"
+    }

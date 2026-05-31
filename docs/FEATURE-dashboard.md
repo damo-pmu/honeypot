@@ -57,6 +57,36 @@ DASHBOARD_PASSWORD=your-secure-password
 | `/stats` | GET | ✅ | Statistiques JSON |
 | `/events/recent` | GET | ✅ | Derniers événements |
 | `/emit` | POST | ❌ | Émission événement (worker) |
+| `/debug/status` | GET | ❌ | Diagnostics système |
+
+## Debug Autonome
+
+### Logs d'audit
+Format JSON structuré - tous les appels sont tracés :
+```json
+{
+  "timestamp": "2026-05-31T23:45:00Z",
+  "level": "INFO",
+  "logger": "honeypot.auth",
+  "message": "Auth login success from 192.168.1.100",
+  "data": {"action": "login", "success": true, "ip": "192.168.1.100"}
+}
+```
+
+### Endpoint de diagnostic
+`GET /dashboard/debug/status` → État interne en temps réel :
+- `events_pending` : Nombre d'événements en mémoire
+- `event_types` : Répartition par type
+- `sessions_active` : Sessions ouvertes
+- `memory_usage` : Statut mémoire
+
+### Middleware Audit
+Toutes les requêtes API sont loggées avec :
+- Méthode et chemin
+- IP client
+- User-Agent
+- Durée de réponse
+- Erreurs avec traceback
 
 ## Déploiement
 
