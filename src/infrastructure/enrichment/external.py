@@ -117,31 +117,68 @@ async def lookup_urlhaus(url: str) -> Dict:
         return {"error": str(e), "source": "urlhaus"}
 
 
-async def enrich_ioc(ioc_value: str, ioc_type: str) -> Dict:
-    """Multi-provider IOC enrichment
+async def enrich_ioc(ioc_value: str, ioc_type: str, use_cache: bool = True) -> Dict:
+    """Multi-provider IOC enrichment with caching
     
     Args:
         ioc_value: IOC to enrich
         ioc_type: Type (hash, ip, url, domain)
+        use_cache: Check Redis cache first (default True)
     
     Returns:
         Combined enrichment results
     """
     results = {}
     
+    # Check cache first
+    if use_cache:
+        from src.infrastructure.enrichment.cache import cache
+        cached = await cache.get_all_cached(ioc_value)
+        if any(cached.values()):
+            # Return cached if any found
+            results = {k: v for k, v in cached.items() if v}
+            if results:
+                return {
+                    "ioc": ioc_value,
+                    "type": ioc_type,
+                    "enrichments": results,
+                    "cached": True
+                }
+    
+    # Fresh lookups
     if ioc_type == "ip":
-        results["abuseipdb"] = await lookup_abuseipdb(ioc_value)
-        results["virustotal"] = await lookup_virustotal(ioc_value, "ip")
+        ip_result = await lookup_abuseipdb(ioc_value)
+        if use_cache and ip_result.get("abuse_confidence"):
+            await cache.set_cached("abuseipdb", ioc_value, ip_result)
+        results["abuseipdb"] = ip_result
+        
+        vt_result = await lookup_virustotal(ioc_value, "ip")
+        if use_cache and vt_result.get("malicious") is not None:
+            await cache.set_cached("virustotal", ioc_value, vt_result)
+        results["virustotal"] = vt_result
+        
     elif ioc_type == "hash":
-        results["virustotal"] = await lookup_virustotal(ioc_value, "hash")
+        result = await lookup_virustotal(ioc_value, "hash")
+        if use_cache and result.get("malicious") is not None:
+            await cache.set_cached("virustotal", ioc_value, result)
+        results["virustotal"] = result
+        
     elif ioc_type == "url":
-        results["virustotal"] = await lookup_virustotal(ioc_value, "url")
-        results["urlhaus"] = await lookup_urlhaus(ioc_value)
+        vt_result = await lookup_virustotal(ioc_value, "url")
+        if use_cache and vt_result.get("malicious") is not None:
+            await cache.set_cached("virustotal", ioc_value, vt_result)
+        results["virustotal"] = vt_result
+        
+        uh_result = await lookup_urlhaus(ioc_value)
+        if use_cache and uh_result.get("threat"):
+            await cache.set_cached("urlhaus", ioc_value, uh_result)
+        results["urlhaus"] = uh_result
     else:
         results["error"] = f"Unsupported type: {ioc_type}"
     
     return {
         "ioc": ioc_value,
         "type": ioc_type,
-        "enrichments": results
+        "enrichments": results,
+        "cached": False
     }
