@@ -1,11 +1,11 @@
 # Dashboard Architecture Plan
 
 ## Objectif
-Intégrer le dashboard FastAPI dans docker-compose avec reverse proxy Apache sur `dashboard.hiddenlabs.cc`
+Intégrer le dashboard FastAPI dans docker-compose avec reverse proxy Apache sur `honeypot.hiddenlabs.cc`
 
 ## Architecture cible
 ```
-User → dashboard.hiddenlabs.cc:80 → Apache reverse proxy → Docker:8000 (FastAPI)
+User → honeypot.hiddenlabs.cc:80 → Apache reverse proxy → Docker:8000 (FastAPI)
 ```
 
 ## Étapes
@@ -16,7 +16,7 @@ User → dashboard.hiddenlabs.cc:80 → Apache reverse proxy → Docker:8000 (Fa
 - [ ] Port mapping : conteneur `8000` → host `8000` (interne)
 
 ### 2. Apache Reverse Proxy
-- [ ] Virtual host `dashboard.hiddenlabs.cc` → proxy vers `localhost:8000`
+- [ ] Virtual host `honeypot.hiddenlabs.cc` → proxy vers `localhost:8000`
 - [ ] Modules requis : `proxy_http`, `proxy_wstunnel` (SSE), `headers`
 - [ ] Headers de sécurité : `X-Content-Type-Options`, `X-Frame-Options`
 
@@ -33,7 +33,7 @@ User → dashboard.hiddenlabs.cc:80 → Apache reverse proxy → Docker:8000 (Fa
 ## Fichiers à créer/modifier
 - `docker-compose.yml` : ajouter service dashboard
 - `Dockerfile.api` : image FastAPI
-- `~/.hermes/honeypot-config/dashboard.hiddenlabs.cc.conf` : vhost (hors repo)
+- `~/.hermes/honeypot-config/honeypot.hiddenlabs.cc.conf` : vhost (hors repo)
 - `.env` : `DASHBOARD_TOKEN`, `API_HOST=0.0.0.0`
 
 ## Dépendances
@@ -43,5 +43,5 @@ User → dashboard.hiddenlabs.cc:80 → Apache reverse proxy → Docker:8000 (Fa
 
 ## Validation
 ```bash
-curl -H "X-Dashboard-Token: $TOKEN" http://dashboard.hiddenlabs.cc/api/stats
+curl -H "X-Dashboard-Token: $TOKEN" http://honeypot.hiddenlabs.cc/api/stats
 ```

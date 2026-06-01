@@ -5,7 +5,7 @@ Dashboard temps réel, user-friendly, auth minimale intégré à docker-compose
 
 ## Architecture cible
 ```
-User → dashboard.hiddenlabs.cc:80 → Apache/Nginx → Docker dashboard:8000
+User → honeypot.hiddenlabs.cc:80 → Apache/Nginx → Docker dashboard:8000
 ```
 
 ## Option A : React + Tailwind + SSE (Recommandé)
@@ -80,7 +80,7 @@ dashboard/
 ## Validation
 ```bash
 # Après déploiement
-open http://dashboard.hiddenlabs.cc
+open http://honeypot.hiddenlabs.cc
 # 1. Page login s'affiche
 # 2. Entrer password → dashboard
 # 3. Events SSE apparaissent en temps réel

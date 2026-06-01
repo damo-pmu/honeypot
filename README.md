@@ -42,7 +42,7 @@ curl http://localhost:8000/health
 
 ## 📊 Dashboard
 
-URL : `http://dashboard.hiddenlabs.cc`
+URL : `http://honeypot.hiddenlabs.cc`
 
 ### Auth minimale
 - Cookie-based session (HttpOnly, SameSite=Strict)
@@ -56,7 +56,7 @@ URL : `http://dashboard.hiddenlabs.cc`
 - ✅ Reconnection automatique
 
 ### Configuration Apache
-Fichier : `~/.hermes/honeypot-config/dashboard.hiddenlabs.cc.conf`
+Fichier : `~/.hermes/honeypot-config/honeypot.hiddenlabs.cc.conf`
 
 ```apache
 ProxyPass /dashboard/stream http://localhost:8000/dashboard/stream connectiontimeout=5

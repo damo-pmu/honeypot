@@ -5,7 +5,7 @@ Dashboard moderne avec authentification minimale et affichage temps réel des at
 
 ## Architecture
 ```
-User → dashboard.hiddenlabs.cc:80 → Apache Proxy → Docker:8000
+User → honeypot.hiddenlabs.cc:80 → Apache Proxy → Docker:8000
                                     ↓
                             FastAPI + SSE + Sessions
 ```
@@ -91,7 +91,7 @@ Toutes les requêtes API sont loggées avec :
 ## Déploiement
 
 ### Configuration Apache
-Fichier : `~/.hermes/honeypot-config/dashboard.hiddenlabs.cc.conf`
+Fichier : `~/.hermes/honeypot-config/honeypot.hiddenlabs.cc.conf`
 
 ```apache
 ProxyPass /dashboard/stream http://localhost:8000/dashboard/stream connectiontimeout=5 retry=0
