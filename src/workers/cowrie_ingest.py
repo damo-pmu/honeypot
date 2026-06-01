@@ -8,7 +8,7 @@ import requests
 from typing import Optional, List
 
 API_URL = os.getenv("API_URL", "http://api:8000")
-COWRIE_LOG = os.getenv("COWRIE_LOG", "/log/cowrie/cowrie.json")
+COWRIE_LOG = os.getenv("COWRIE_LOG", "/cowrie/var/log/cowrie.json")
 
 # Session tracking for response engine
 session_commands: dict = {}

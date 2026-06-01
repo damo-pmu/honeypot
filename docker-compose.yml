@@ -62,7 +62,7 @@ services:
       - "${SSH_PORT:-22}:2222"  # SSH (honeypot on standard port)
       - "${TELNET_PORT:-23}:23"    # Telnet
     volumes:
-      - cowrie_logs:/log/cowrie  # Named volume for logs
+      - cowrie_logs:/cowrie/var/log  # Named volume for logs
       - cowrie_data:/cowrie/var/lib
     environment:
       - HONEYPOT_API_URL=http://api:8000/events
@@ -76,10 +76,10 @@ services:
       - cowrie
       - api
     volumes:
-      - cowrie_logs:/log/cowrie:ro  # Same volume for log reading
+      - cowrie_logs:/cowrie/var/log:ro  # Same volume for log reading
       - worker_logs:/app/logs
     environment:
-      - COWRIE_LOG=/log/cowrie/cowrie.json
+      - COWRIE_LOG=/cowrie/var/log/cowrie.json
       - API_URL=http://api:8000
       - AUDIT_LOG_PATH=/app/logs/audit.log
 
