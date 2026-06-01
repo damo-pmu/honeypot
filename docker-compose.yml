@@ -31,6 +31,7 @@ services:
   # Database
   postgres:
     image: postgres:15-alpine
+    env_file: .env
     environment:
       POSTGRES_DB: honeypot
       POSTGRES_USER: honeypot
@@ -58,6 +59,7 @@ services:
     build:
       context: ./docker/cowrie
       dockerfile: Dockerfile
+    env_file: .env
     ports:
       - "${SSH_PORT:-22}:2222"  # SSH (honeypot on standard port)
       - "${TELNET_PORT:-23}:23"    # Telnet
@@ -86,6 +88,7 @@ services:
   # Prom/Grafana (minimal)
   prometheus:
     image: prom/prometheus
+    env_file: .env
     ports:
       - "${PROMETHEUS_PORT:-9090}:9090"
     volumes:
@@ -94,6 +97,7 @@ services:
 
   grafana:
     image: grafana/grafana-enterprise
+    env_file: .env
     ports:
       - "${GRAFANA_PORT:-3000}:3000"
     environment:
