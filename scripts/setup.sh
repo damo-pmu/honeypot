@@ -82,20 +82,6 @@ fetch_secret "GRAFANA_PASSWORD"
 
 # Docker setup
 echo ""
-echo "[Docker] Preparing volumes..."
-docker volume create honeypot_postgres_data 2>/dev/null || true
-docker volume create honeypot_cowrie_logs 2>/dev/null || true
-docker volume create honeypot_cowrie_data 2>/dev/null || true
-docker volume create honeypot_worker_logs 2>/dev/null || true
-docker volume create honeypot_api_logs 2>/dev/null || true
-
-if [ "$DRY_RUN" = true ]; then
-    echo ""
-    log_info "Dry run - skipping docker compose up"
-    exit 0
-fi
-
-echo ""
 echo "[Docker] Building images..."
 docker compose build --no-cache
 
