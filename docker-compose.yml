@@ -60,7 +60,7 @@ services:
       - "22:2222"  # SSH (honeypot on standard port)
       - "23:23"    # Telnet
     volumes:
-      - /var/lib/docker/volumes/439d0431fbd5fc4b6533751bada69a8f48cfcf0ac98ea9afa35fe71aaacebfa9/_data/log/cowrie:/log/cowrie  # Use existing log volume
+      - cowrie_logs:/log/cowrie  # Named volume for logs
       - cowrie_data:/cowrie/var/lib
     environment:
       - HONEYPOT_API_URL=http://api:8000/events
@@ -74,7 +74,7 @@ services:
       - cowrie
       - api
     volumes:
-      - /var/lib/docker/volumes/439d0431fbd5fc4b6533751bada69a8f48cfcf0ac98ea9afa35fe71aaacebfa9/_data/log/cowrie:/log/cowrie:ro  # Read logs
+      - cowrie_logs:/log/cowrie:ro  # Same volume for log reading
       - worker_logs:/app/logs
     environment:
       - COWRIE_LOG=/log/cowrie/cowrie.json
