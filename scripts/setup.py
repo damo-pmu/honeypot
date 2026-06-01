@@ -27,25 +27,29 @@ def setup_env() -> Path:
     """Create .env from template, inject secrets if available"""
     env_file = Path(".env")
     example = Path(".env.example")
-   
+    
     if not example.exists():
         print("❌ .env.example not found")
         sys.exit(1)
-   
-    # Copy template first
+    
     content = example.read_text()
     
-    # Inject API key from environment (GitHub Actions injects secrets as API_KEY_OPENROUTER)
-    api_key = os.getenv("API_KEY_OPENROUTER")
-    if api_key:
-        # Handle both "API_KEY_OPENROUTER=\n" and "API_KEY_OPENROUTER=" cases
-        if "API_KEY_OPENROUTER=\n" in content:
-            content = content.replace("API_KEY_OPENROUTER=\n", f"API_KEY_OPENROUTER={api_key}\n")
-        elif "API_KEY_OPENROUTER=" in content:
-            content = content.replace("API_KEY_OPENROUTER=", f"API_KEY_OPENROUTER={api_key}")
-        print("  ✓ Injected API_KEY_OPENROUTER from secrets")
-    else:
-        print("  ⚠ No API_KEY_OPENROUTER in environment - using placeholder")
+    # Inject all secrets from environment (GitHub Actions injects these)
+    secrets_map = {
+        "API_KEY_OPENROUTER": "API_KEY_OPENROUTER=",
+        "DASHBOARD_PASSWORD": "DASHBOARD_PASSWORD=",
+        "PG_PASS": "PG_PASS=",
+        "GRAFANA_PASSWORD": "GRAFANA_PASSWORD="
+    }
+    
+    for secret_name, placeholder in secrets_map.items():
+        secret_value = os.getenv(secret_name)
+        if secret_value:
+            content = content.replace(
+                f"{placeholder}\n", 
+                f"{placeholder}{secret_value}\n"
+            )
+            print(f"  ✓ Injected {secret_name} from secrets")
     
     env_file.write_text(content)
     print("  ✓ Created .env from template")
@@ -54,7 +58,7 @@ def setup_env() -> Path:
 def setup_git():
     """Ensure clean git state"""
     run("git fetch origin", check=False)
-    run("git pull origin main --rebase", check=False)
+    run("git pull origin master --rebase", check=False)
     
     # Remove any accidentally committed .env
     result = run("git status --porcelain .env 2>/dev/null || echo 'clean'", check=False)
