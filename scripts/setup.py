@@ -72,16 +72,16 @@ def setup_docker(full=False):
     run("docker volume create honeypot_cowrie_logs 2>/dev/null || true", check=False)
     
     # Build images
-    run("docker-compose build --no-cache")
+    run("docker compose build --no-cache")
     
     profile = "full" if full else "minimal"
     
     # Start services
     if full:
-        run("docker-compose --profile full up -d")
+        run("docker compose --profile full up -d")
     else:
         # Minimal: only core services
-        run("docker-compose up -d api postgres redis cowrie worker")
+        run("docker compose up -d api postgres redis cowrie worker")
     
     print(f"  ✓ Services started ({profile} mode)")
 
@@ -136,12 +136,12 @@ def main():
     print("\nEndpoints:")
     print("  API:         http://localhost:8000")
     print("  Dashboard:   http://localhost:8000/dashboard/")
-    print("  Cowrie SSH:  localhost:2222")
+    print("  Cowrie SSH:  localhost:22 (honeypot)")
     if args.full:
         print("  Prometheus:  http://localhost:9090")
         print("  Grafana:     http://localhost:3000")
     
-    print("\nDashboard auth token: change-me-in-prod (update .env DASHBOARD_TOKEN)")
+    print("\nDashboard password in .env (default: 'demo')")
 
 if __name__ == "__main__":
     main()
