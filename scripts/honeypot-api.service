@@ -1,0 +1,17 @@
+[Unit]
+Description=Honeypot Dashboard API
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/test-honeypot
+Environment="PATH=/home/ubuntu/bin:/home/ubuntu/.hermes/hermes-agent/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"
+Environment="DASHBOARD_PASSWORD=honeypot2024"
+Environment="HTTPS=false"
+ExecStart=/home/ubuntu/.hermes/hermes-agent/venv/bin/python3 -m uvicorn app:app --host 0.0.0.0 --port 8000
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

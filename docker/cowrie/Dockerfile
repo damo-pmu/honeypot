@@ -1,7 +1,7 @@
 # Cowrie honeypot integration - Docker setup
 # Uses official cowrie image with custom config
 
-FROM cowhi/cowrie:latest
+FROM cowrie/cowrie:latest
 
 # Expose SSH and Telnet ports
 EXPOSE 2222 23

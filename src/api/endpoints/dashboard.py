@@ -236,7 +236,7 @@ def get_dashboard_stats(session: str = Depends(require_auth)):
 
 @router.post("/login")
 async def login(request: Request, response: Response):
-    """Login with password form"""
+    """Login with password form - returns dashboard HTML with session cookie"""
     form = await request.form()
     password = form.get("password", "")
     client_ip = request.client.host if request.client else "unknown"
@@ -244,10 +244,15 @@ async def login(request: Request, response: Response):
     if password == DASHBOARD_PASSWORD:
         session = create_session(response)
         log_auth_event("login", True, client_ip, {"method": "form"})
-        return RedirectResponse("/dashboard/", status_code=303)
+        
+        # Build response with both cookie and HTML body
+        html_content = _get_dashboard_html()
+        return HTMLResponse(content=html_content,
+            headers={"Set-Cookie": f"dash_session={session}; HttpOnly; Path=/; SameSite=strict"}
+        )
     
     log_auth_event("login_failed", False, client_ip, {"reason": "invalid_password"})
-    return RedirectResponse("/dashboard/?error=1", status_code=303)
+    return HTMLResponse(LOGIN_HTML + "<p style='color:red'>Invalid password</p>")
 
 
 @router.get("/logout")

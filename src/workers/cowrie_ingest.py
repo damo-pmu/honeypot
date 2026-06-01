@@ -7,8 +7,8 @@ from pathlib import Path
 import requests
 from typing import Optional, List
 
-API_URL = os.getenv("API_URL", "http://api:8000")
-COWRIE_LOG = os.getenv("COWRIE_LOG", "/cowrie/var/log/cowrie.json")
+API_URL = os.getenv("API_URL", "http://localhost:8000")
+COWRIE_LOG = os.getenv("COWRIE_LOG", "/home/ubuntu/test-honeypot/data/cowrie.json")
 
 # Session tracking for response engine
 session_commands: dict = {}

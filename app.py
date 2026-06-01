@@ -15,6 +15,7 @@ from src.api.endpoints.dashboard import router as dashboard_router
 
 # Import audit middleware
 from src.api.middleware.audit import AuditMiddleware
+from src.infrastructure.observability.metrics import metrics_endpoint
 
 app = FastAPI(
     title="Honeypot Threat Intelligence API",

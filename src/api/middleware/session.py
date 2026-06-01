@@ -16,12 +16,16 @@ def create_session(response: Response) -> str:
     """Create a session and set cookie"""
     session_id = f"dash_{datetime.utcnow().timestamp()}_{os.urandom(4).hex()}"
     _sessions[session_id] = datetime.utcnow() + timedelta(hours=SESSION_DURATION_HOURS)
+    
+    # Note: secure=False for dev, True in production (HTTPS)
+    secure = os.getenv("HTTPS", "false").lower() == "true"
+    
     response.set_cookie(
         key="dash_session",
         value=session_id,
         httponly=True,
         samesite="strict",
-        secure=True
+        secure=secure
     )
     return session_id
 
