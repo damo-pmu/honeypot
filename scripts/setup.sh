@@ -76,9 +76,9 @@ fetch_secret() {
 
 # Try to inject secrets (will use defaults if not available)
 fetch_secret "API_KEY_OPENROUTER"
-fetch_secret "DASHBOARD_PASSWORD" 
+fetch_secret "DASHBOARD_PASS" 
 fetch_secret "PG_PASS"
-fetch_secret "GRAFANA_PASSWORD"
+fetch_secret "GRAFANA_PASS"
 
 # Docker setup
 echo ""
@@ -102,4 +102,4 @@ echo "  Dashboard:   http://localhost:${API_PORT:-8000}/dashboard/"
 echo "  Cowrie SSH:  localhost:${SSH_PORT:-22}"
 echo "  Grafana:     http://localhost:${GRAFANA_PORT:-3000} (use --full)"
 echo ""
-echo "Dashboard password: ${DASHBOARD_PASSWORD:-demo} (check .env)"
+echo "Dashboard password: ${DASHBOARD_PASS:-demo} (check .env)"

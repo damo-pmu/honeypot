@@ -8,7 +8,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 # Session store (use Redis in production)
 _sessions: dict = {}
 
-DASHBOARD_PASSWORD = os.getenv("DASHBOARD_PASSWORD", "change-me-in-prod")
+DASHBOARD_PASSWORD = os.getenv("DASHBOARD_PASS", "change-me-in-prod")
 SESSION_DURATION_HOURS = 24
 
 

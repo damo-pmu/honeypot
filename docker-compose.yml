@@ -14,7 +14,7 @@ services:
       - redis
     environment:
       # Environment variables passed from .env
-      - DASHBOARD_PASSWORD=${DASHBOARD_PASSWORD:-demo}
+      - DASHBOARD_PASS=${DASHBOARD_PASS:-demo}
       - OPENROUTER_API_KEY=${API_KEY_OPENROUTER:-demo}
       # Constructed from .env values
       - DATABASE_URL=postgresql://honeypot:${PG_PASS:-demo}@postgres:5432/honeypot
@@ -97,7 +97,7 @@ services:
     ports:
       - "${GRAFANA_PORT:-3000}:3000"
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-demo}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASS:-demo}
       - GF_PATHS_DATA=/var/lib/grafana
       - GF_PROVISIONING_ENABLED=true
       - GF_USERS_ALLOW_SIGN_UP=false
