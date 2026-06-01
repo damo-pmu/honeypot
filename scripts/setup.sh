@@ -3,7 +3,8 @@
 # Honeypot Setup Script - Local OCI Deployment
 # Usage: ./setup.sh [--full] [--dry-run]
 #
-# Fetches secrets from GitHub and deploys Docker stack locally
+# Fetches variables from GitHub and deploys Docker stack locally
+#
 
 set -e
 
@@ -57,16 +58,47 @@ if [ ! -f .env.example ]; then
 fi
 
 echo "[Environment] Setting up .env..."
-# Use .env.local if exists (for local secrets), otherwise .env.example
-if [ -f .env.local ]; then
-    log_info "Using existing .env.local"
-else
-    cp .env.example .env
-    log_info "Created .env from template - add secrets manually or via .env.local"
-fi
 
-# Note: GitHub secrets cannot be read via gh API for security
-# Use .env.local (gitignored) for production secrets
+# Try to fetch variables from GitHub
+declare -A GH_VARS
+VARS=("API_KEY_OPENROUTER" "PG_PASS" "GRAFANA_PASS" "DASHBOARD_PASS")
+FETCHED_VARS=()
+
+for var in "${VARS[@]}"; do
+    value=$(gh variable list --json name,value --jq ".[] | select(.name == \"$var\").value" 2>/dev/null || echo "")
+    if [ -n "$value" ]; then
+        GH_VARS[$var]="$value"
+        FETCHED_VARS+=("$var")
+        log_info "Fetched variable: $var"
+    else
+        log_warn "Variable $var not found on GitHub (using defaults)"
+    fi
+done
+
+# Check if .env.local exists for overrides
+if [ -f .env.local ]; then
+    log_info "Using .env.local for overrides"
+else
+    # Build .env with fetched variables
+    cp .env.example .env
+    
+    # Inject fetched variables
+    for var in "${FETCHED_VARS[@]}"; do
+        # Map to correct .env key names (must match .env.example)
+        case $var in
+            API_KEY_OPENROUTER) env_key="API_KEY_OPENROUTER" ;;
+            PG_PASS) env_key="PG_PASS" ;;
+            GRAFANA_PASS) env_key="GRAFANA_PASS" ;;
+            DASHBOARD_PASS) env_key="DASHBOARD_PASS" ;;
+        esac
+        
+        # Update .env with fetched value
+        if grep -q "^$env_key=" .env 2>/dev/null; then
+            sed -i "s|^$env_key=.*|$env_key=${GH_VARS[$var]}|" .env
+            log_info "Updated $env_key in .env"
+        fi
+    done
+fi
 
 # Docker setup
 echo ""
@@ -90,4 +122,4 @@ echo "  Dashboard:   http://localhost:${API_PORT:-8000}/dashboard/"
 echo "  Cowrie SSH:  localhost:${SSH_PORT:-22}"
 echo "  Grafana:     http://localhost:${GRAFANA_PORT:-3000} (use --full)"
 echo ""
-echo "Dashboard password: ${DASHBOARD_PASS:-demo} (check .env)"
+echo "Dashboard password: ${DASHBOARD_PASSWORD:-demo} (check .env)"
