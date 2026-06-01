@@ -7,7 +7,7 @@ services:
       context: .
       dockerfile: docker/api/Dockerfile
     ports:
-      - "8000:8000"
+      - "${API_PORT:-8000}:8000"
     depends_on:
       - postgres
       - redis
@@ -57,8 +57,8 @@ services:
       context: ./docker/cowrie
       dockerfile: Dockerfile
     ports:
-      - "22:2222"  # SSH (honeypot on standard port)
-      - "23:23"    # Telnet
+      - "${SSH_PORT:-22}:2222"  # SSH (honeypot on standard port)
+      - "${TELNET_PORT:-23}:23"    # Telnet
     volumes:
       - cowrie_logs:/log/cowrie  # Named volume for logs
       - cowrie_data:/cowrie/var/lib
@@ -85,7 +85,7 @@ services:
   prometheus:
     image: prom/prometheus
     ports:
-      - "9090:9090"
+      - "${PROMETHEUS_PORT:-9090}:9090"
     volumes:
       - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
@@ -93,7 +93,7 @@ services:
   grafana:
     image: grafana/grafana-enterprise
     ports:
-      - "3000:3000"
+      - "${GRAFANA_PORT:-3000}:3000"
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-demo}
       - GF_PATHS_DATA=/var/lib/grafana
