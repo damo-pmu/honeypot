@@ -60,7 +60,7 @@ services:
       - "22:2222"  # SSH (honeypot on standard port)
       - "23:23"    # Telnet
     volumes:
-      - ./data/cowrie:/cowrie/var/log  # Bind mount for log access
+      - ./data/cowrie:/log/cowrie  # Bind mount - matches Cowrie default log path
       - cowrie_data:/cowrie/var/lib
     environment:
       - HONEYPOT_API_URL=http://api:8000/events
@@ -74,10 +74,10 @@ services:
       - cowrie
       - api
     volumes:
-      - ./data/cowrie:/cowrie/var/log:ro  # Same bind mount
+      - ./data/cowrie:/log/cowrie:ro  # Same bind mount
       - worker_logs:/app/logs
     environment:
-      - COWRIE_LOG=/cowrie/var/log/cowrie.json
+      - COWRIE_LOG=/log/cowrie/cowrie.json
       - API_URL=http://api:8000
       - AUDIT_LOG_PATH=/app/logs/audit.log
 
