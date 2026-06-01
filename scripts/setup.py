@@ -33,22 +33,22 @@ def setup_env() -> Path:
         sys.exit(1)
    
     # Copy template first
-    if not env_file.exists():
-        env_file.write_text(example.read_text())
-        print("  ✓ Created .env from template")
+    content = example.read_text()
     
-    # Inject API key from environment (GitHub Actions injects secrets as OPENROUTER_API_KEY)
-    api_key = os.getenv("OPENROUTER_API_KEY")
+    # Inject API key from environment (GitHub Actions injects secrets as API_KEY_OPENROUTER)
+    api_key = os.getenv("API_KEY_OPENROUTER")
     if api_key:
-        content = env_file.read_text()
-        # Replace default "demo" value with real key
-        if "OPENROUTER_API_KEY=demo" in content:
-            content = content.replace("OPENROUTER_API_KEY=demo", f"OPENROUTER_API_KEY={api_key}")
-            env_file.write_text(content)
-            print("  ✓ Injected OpenRouter API key from secrets")
+        # Handle both "API_KEY_OPENROUTER=\n" and "API_KEY_OPENROUTER=" cases
+        if "API_KEY_OPENROUTER=\n" in content:
+            content = content.replace("API_KEY_OPENROUTER=\n", f"API_KEY_OPENROUTER={api_key}\n")
+        elif "API_KEY_OPENROUTER=" in content:
+            content = content.replace("API_KEY_OPENROUTER=", f"API_KEY_OPENROUTER={api_key}")
+        print("  ✓ Injected API_KEY_OPENROUTER from secrets")
     else:
-        print("  ⚠ No OPENROUTER_API_KEY in environment - using demo default")
+        print("  ⚠ No API_KEY_OPENROUTER in environment - using placeholder")
     
+    env_file.write_text(content)
+    print("  ✓ Created .env from template")
     return env_file
 
 def setup_git():
