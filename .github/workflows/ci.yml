@@ -52,8 +52,7 @@ jobs:
       
       - name: Build Docker images
         run: |
-          docker-compose -f docker-compose.yml build --no-cache
-      
+          docker compose build --no-cache
       - name: Check for vulnerabilities
         run: |
           docker run --rm aquasec/trivy image honeypot_api:latest || true
@@ -61,7 +60,7 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/master'
     steps:
       - uses: actions/checkout@v4
       - name: Deploy notification
