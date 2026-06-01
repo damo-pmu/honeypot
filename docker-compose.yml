@@ -99,8 +99,13 @@ services:
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-demo}
       - GF_PATHS_DATA=/var/lib/grafana
+      - GF_PROVISIONING_ENABLED=true
+      - GF_USERS_ALLOW_SIGN_UP=false
     volumes:
       - grafana_data:/var/lib/grafana
+      - ./grafana/datasource.yaml:/etc/grafana/provisioning/datasources/datasource.yaml:ro
+      - ./grafana/dashboard.yaml:/etc/grafana/provisioning/dashboards/dashboard.yaml:ro
+      - ./grafana/dashboard.json:/etc/grafana/provisioning/dashboards/honeypot.json:ro
 
 volumes:
   postgres_data:

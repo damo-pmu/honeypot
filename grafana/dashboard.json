@@ -1,0 +1,52 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Honeypot Threat Intelligence",
+    "tags": ["honeypot", "security", "threat-intel"],
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "5s",
+    "panels": [
+      {
+        "type": "stat",
+        "title": "Total Attacks",
+        "gridPos": {"x": 0, "y": 0, "w": 6, "h": 4},
+        "targets": [{"expr": "honeypot_attacks_total", "refId": "A"}],
+        "options": {"reduceOptions": {"values": false, "calcs": ["last"]}}
+      },
+      {
+        "type": "stat",
+        "title": "Active Sessions",
+        "gridPos": {"x": 6, "y": 0, "w": 6, "h": 4},
+        "targets": [{"expr": "honeypot_sessions_active", "refId": "A"}],
+        "options": {"reduceOptions": {"values": false, "calcs": ["last"]}}
+      },
+      {
+        "type": "graph",
+        "title": "Attacks by Protocol",
+        "gridPos": {"x": 12, "y": 0, "w": 12, "h": 8},
+        "targets": [{"expr": "rate(honeypot_attacks_total[5m])", "legendFormat": "{{protocol}}"}]
+      },
+      {
+        "type": "table",
+        "title": "Top Attacker IPs",
+        "gridPos": {"x": 0, "y": 4, "w": 12, "h": 8},
+        "targets": [{"expr": "topk(10, honeypot_attacks_total)"}]
+      },
+      {
+        "type": "heatmap",
+        "title": "Attack Severity Distribution",
+        "gridPos": {"x": 12, "y": 8, "w": 12, "h": 8},
+        "targets": [{"expr": "honeypot_attack_severity_bucket"}]
+      },
+      {
+        "type": "timeseries",
+        "title": "Response Time (95th percentile)",
+        "gridPos": {"x": 0, "y": 12, "w": 24, "h": 8},
+        "targets": [{"expr": "histogram_quantile(0.95, rate(honeypot_response_time_seconds_bucket[5m]))"}]
+      }
+    ]
+  },
+  "overwrite": true
+}
