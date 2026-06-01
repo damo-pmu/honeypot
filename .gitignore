@@ -1,5 +1,6 @@
 .env.ci
 .env
+.env.local
 *.pem
 secrets/
 # Python

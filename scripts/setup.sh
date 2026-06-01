@@ -57,28 +57,16 @@ if [ ! -f .env.example ]; then
 fi
 
 echo "[Environment] Setting up .env..."
-cp .env.example .env
+# Use .env.local if exists (for local secrets), otherwise .env.example
+if [ -f .env.local ]; then
+    log_info "Using existing .env.local"
+else
+    cp .env.example .env
+    log_info "Created .env from template - add secrets manually or via .env.local"
+fi
 
-# Fetch and inject secrets from GitHub
-# Note: Requires gh auth login and repo access
-fetch_secret() {
-    local secret_name=$1
-    if gh secret list 2>/dev/null | grep -q "$secret_name"; then
-        local value=$(gh api repos/damo-pmu/honeypot/actions/secrets/$secret_name 2>/dev/null || echo "")
-        if [ -n "$value" ]; then
-            sed -i "s/^${secret_name}=/${secret_name}=${value}/" .env
-            log_info "Injected $secret_name from GitHub secrets"
-        fi
-    else
-        log_warn "$secret_name not found in repo secrets, using default"
-    fi
-}
-
-# Try to inject secrets (will use defaults if not available)
-fetch_secret "API_KEY_OPENROUTER"
-fetch_secret "DASHBOARD_PASS" 
-fetch_secret "PG_PASS"
-fetch_secret "GRAFANA_PASS"
+# Note: GitHub secrets cannot be read via gh API for security
+# Use .env.local (gitignored) for production secrets
 
 # Docker setup
 echo ""
