@@ -2,5 +2,10 @@
 .env
 *.pem
 secrets/
+# Python
+__pycache__/
+*.pyc
+# Cowrie data (volume managed by Docker)
+data/cowrie/
 # PROJECT_MEMORY.md versionné - voir CIABOOTSTRAP.md pour notes internes
 # /docs est la seule documentation publique - le reste est privé

@@ -12,9 +12,10 @@ services:
       - postgres
       - redis
     environment:
-      - DATABASE_URL=postgresql://honeypot:secret@postgres:5432/honeypot
+      - DATABASE_URL=postgresql://honeypot:${PG_PASS:-secret}@postgres:5432/honeypot
       - REDIS_URL=redis://redis:6379
-      - DASHBOARD_PASSWORD=${DASHBOARD_PASSWORD}
+      - DASHBOARD_PASSWORD=${DASHBOARD_PASSWORD:-demo}
+      - OPENROUTER_API_KEY=${API_KEY_OPENROUTER}
       - AUDIT_LOG_PATH=/app/logs/audit.log
     volumes:
       - api_logs:/app/logs
@@ -31,28 +32,21 @@ services:
     environment:
       POSTGRES_DB: honeypot
       POSTGRES_USER: honeypot
-      POSTGRES_PASSWORD: secret
+      POSTGRES_PASSWORD: ${PG_PASS:-secret}
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - postgres_logs:/var/lib/postgresql/data/log
       - ./migrations:/migrations
-    ports:
-      - "5432:5432"
 
   # Cache & Queue
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
     volumes:
       - redis_data:/data
       - redis_logs:/var/log/redis
 
   rabbitmq:
     image: rabbitmq:3-management-alpine
-    ports:
-      - "5672:5672"
-      - "15672:15672"
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
       - rabbitmq_logs:/var/log/rabbitmq
@@ -84,6 +78,7 @@ services:
       - worker_logs:/app/logs
     environment:
       - COWRIE_LOG=/cowrie/var/log/cowrie.json
+      - API_URL=http://api:8000
       - AUDIT_LOG_PATH=/app/logs/audit.log
 
   # Prom/Grafana (minimal)
