@@ -4,7 +4,7 @@ from typing import Optional
 from sqlalchemy.orm import Session
 from collections import Counter
 
-from ..core.database import (
+from src.core.database import (
     AttackDB, SessionDB, CommandDB,
     AttackerDB, get_db
 )

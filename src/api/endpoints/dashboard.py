@@ -10,15 +10,15 @@ import json
 from collections import Counter
 
 # Import session auth
-from ..middleware.session import (
+from src.api.middleware.session import (
     create_session, get_session, clear_session, require_auth,
     DASHBOARD_PASSWORD, LOGIN_HTML, _sessions
 )
 # Import database
-from ..core.database import get_db, SessionDB, AttackDB, CommandDB, AttackerDB
+from src.core.database import get_db, SessionDB, AttackDB, CommandDB, AttackerDB
 # Import audit logger and dashboard service
-from ...utils.audit_logger import log_auth_event, log_dashboard_event
-from ...services.dashboard import DashboardService, DashboardRepository
+from src.utils.audit_logger import log_auth_event, log_dashboard_event
+from src.services.dashboard import DashboardService, DashboardRepository
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
@@ -29,7 +29,7 @@ _event_counts = Counter()  # Track attack types
 
 def add_event(event_type: str, data: dict):
     """Add event to dashboard stream"""
-    from ...infrastructure.observability.metrics import attacks_total, sessions_active, attack_severity
+    from src.infrastructure.observability.metrics import attacks_total, sessions_active, attack_severity
     
     event = {
         "type": event_type,
