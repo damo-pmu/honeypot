@@ -8,7 +8,7 @@ services:
       dockerfile: docker/api/Dockerfile
     env_file: .env
     ports:
-      - "${API_PORT:-8000}:8000"
+      - "127.0.0.1:${API_PORT:-8000}:8000"  # localhost only - Apache reverse proxy
     depends_on:
       - postgres
       - redis
@@ -89,7 +89,7 @@ services:
     image: prom/prometheus
     env_file: .env
     ports:
-      - "${PROMETHEUS_PORT:-9090}:9090"
+      - "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"  # localhost only - no public scrape
     volumes:
       - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
@@ -98,7 +98,7 @@ services:
     image: grafana/grafana-enterprise
     env_file: .env
     ports:
-      - "${GRAFANA_PORT:-3000}:3000"
+      - "127.0.0.1:${GRAFANA_PORT:-3000}:3000"  # localhost only - Apache reverse proxy
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASS:-demo}
       - GF_PATHS_DATA=/var/lib/grafana

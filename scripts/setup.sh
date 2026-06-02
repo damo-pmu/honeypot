@@ -61,7 +61,7 @@ echo "[Environment] Setting up .env..."
 
 # Try to fetch variables from GitHub
 declare -A GH_VARS
-VARS=("API_KEY_OPENROUTER" "PG_PASS" "GRAFANA_PASS" "DASHBOARD_PASS")
+VARS=("API_KEY_OPENROUTER" "PG_PASS" "GRAFANA_PASS" "DASHBOARD_PASS" "GRAFANA_DB_PASSWORD")
 FETCHED_VARS=()
 
 for var in "${VARS[@]}"; do
@@ -90,6 +90,7 @@ else
             PG_PASS) env_key="PG_PASS" ;;
             GRAFANA_PASS) env_key="GRAFANA_PASS" ;;
             DASHBOARD_PASS) env_key="DASHBOARD_PASS" ;;
+            GRAFANA_DB_PASSWORD) env_key="GRAFANA_DB_PASSWORD" ;;
         esac
         
         # Update .env with fetched value
@@ -109,7 +110,7 @@ echo ""
 echo "[Docker] Starting services..."
 # Import dashboard via API
 import_dashboard() {
-    echo "[Grafana] Importing dashboard..."
+    echo "[Grafana] Importing dashboards..."
     sleep 5  # Wait for Grafana to be ready
     
     GRAFANA_PASS="${GRAFANA_PASS:-demo}"
@@ -117,10 +118,17 @@ import_dashboard() {
         GRAFANA_PASS=$(grep '^GRAFANA_PASS=' .env | cut -d'=' -f2 || echo "demo")
     fi
     
+    # Import monitoring dashboard
     curl -s -u "admin:${GRAFANA_PASS}" \
         -X POST "http://localhost:3000/api/dashboards/db" \
         -H 'Content-Type: application/json' \
-        -d @grafana/dashboard.json > /dev/null 2>&1 && log_info "Dashboard imported" || log_warn "Dashboard import failed"
+        -d @grafana/dashboard-monitoring.json > /dev/null 2>&1 && log_info "Monitoring dashboard imported" || log_warn "Monitoring dashboard import failed"
+    
+    # Import investigation dashboard  
+    curl -s -u "admin:${GRAFANA_PASS}" \
+        -X POST "http://localhost:3000/api/dashboards/db" \
+        -H 'Content-Type: application/json' \
+        -d @grafana/dashboard-investigation.json > /dev/null 2>&1 && log_info "Investigation dashboard imported" || log_warn "Investigation dashboard import failed"
 }
 
 echo ""
