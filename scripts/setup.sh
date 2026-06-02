@@ -61,7 +61,7 @@ echo "[Environment] Setting up .env..."
 
 # Try to fetch variables from GitHub
 declare -A GH_VARS
-VARS=("API_KEY_OPENROUTER" "PG_PASS" "GRAFANA_PASS" "DASHBOARD_PASS" "GRAFANA_DB_PASSWORD")
+VARS=("API_KEY_OPENROUTER" "PG_PASS" "GRAFANA_PASS" "DASHBOARD_PASS" "GRAFANA_DB_PASS")
 FETCHED_VARS=()
 
 for var in "${VARS[@]}"; do
@@ -90,7 +90,7 @@ else
             PG_PASS) env_key="PG_PASS" ;;
             GRAFANA_PASS) env_key="GRAFANA_PASS" ;;
             DASHBOARD_PASS) env_key="DASHBOARD_PASS" ;;
-            GRAFANA_DB_PASSWORD) env_key="GRAFANA_DB_PASSWORD" ;;
+            GRAFANA_DB_PASS) env_key="GRAFANA_DB_PASS" ;;
         esac
         
         # Update .env with fetched value
@@ -99,6 +99,13 @@ else
             log_info "Updated $env_key in .env"
         fi
     done
+    
+    # Update datasource password if GRAFANA_DB_PASS is set
+    if grep -q "^GRAFANA_DB_PASS=" .env 2>/dev/null; then
+        DB_PASS=$(grep '^GRAFANA_DB_PASS=' .env | cut -d'=' -f2)
+        sed -i "s/CHANGE_ME_VIA_SED/${DB_PASS}/g" grafana/datasource.yaml
+        log_info "Updated PostgreSQL password in datasource.yaml"
+    fi
 fi
 
 # Docker setup

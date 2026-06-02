@@ -9,17 +9,15 @@ datasources:
     editable: false
     jsonData:
       timeInterval: "15s"
-  
+    
   - name: PostgreSQL
     type: postgres
     access: proxy
     url: postgres:5432
-    editable: true
+    editable: false
     jsonData:
       database: honeypot
       user: honeypot
-      secureJsonData:
-        password: "demo"
-    secureJsonFields:
-      password:
-        - GRAFANA_DB_PASSWORD
+    secureJsonData:
+      password: "demo"
+    version: 1
