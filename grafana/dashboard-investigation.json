@@ -105,5 +105,6 @@
   },
   "overwrite": true,
   "folderId": 2,
+  "folderUid": "honeypot-investigation",
   "message": "Investigation dashboard - PostgreSQL powered for SOC analysis"
 }

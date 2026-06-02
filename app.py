@@ -59,3 +59,8 @@ async def startup_event():
 @app.get("/health")
 def health():
     return {"status": "ok", "version": "0.1.0"}
+
+
+@app.get("/metrics")
+def metrics():
+    return metrics_endpoint()

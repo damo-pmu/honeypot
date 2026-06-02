@@ -5,7 +5,7 @@ from typing import Optional
 from pydantic import BaseModel
 
 from sqlalchemy.orm import Session
-from src.core.database import get_db, AttackDB
+from src.core.database import get_db, AttackDB, SessionDB, AttackerDB
 from src.infrastructure.observability.metrics import attacks_total, db_queries, attack_severity
 
 router = APIRouter(prefix="/attacks", tags=["attacks"])
@@ -24,7 +24,28 @@ class AttackLog(BaseModel):
 
 @router.post("/log", response_model=dict)
 def log_attack(attack: AttackLog, db: Session = Depends(get_db)):
-    """Log attack event to database - called by worker"""
+    """Log attack event to database - called by worker
+    Creates session/attacker if they don't exist (idempotent)
+    """
+    # Ensure attacker exists
+    db_attacker = db.query(AttackerDB).filter(AttackerDB.ip == attack.attacker_ip).first()
+    if not db_attacker:
+        db_attacker = AttackerDB(ip=attack.attacker_ip, threat_score=50)
+        db.add(db_attacker)
+        db.commit()
+    
+    # Ensure session exists
+    db_session = db.query(SessionDB).filter(SessionDB.id == attack.session_id).first()
+    if not db_session:
+        db_session = SessionDB(
+            id=attack.session_id,
+            attacker_ip=attack.attacker_ip,
+            protocol=attack.protocol
+        )
+        db.add(db_session)
+        db.commit()
+    
+    # Log attack
     db_attack = AttackDB(
         session_id=attack.session_id,
         attacker_ip=attack.attacker_ip,
