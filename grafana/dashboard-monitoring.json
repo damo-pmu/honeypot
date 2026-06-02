@@ -1,0 +1,100 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Honeypot - Monitoring & Metrics",
+    "tags": ["monitoring", "prometheus", "infrastructure"],
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "panels": [
+      {
+        "type": "stat",
+        "title": "Total Attacks",
+        "gridPos": {"x": 0, "y": 0, "w": 4, "h": 4},
+        "datasource": {"name": "Prometheus"},
+        "targets": [{"expr": "honeypot_attacks_total", "refId": "A"}],
+        "options": {"reduceOptions": {"values": false, "calcs": ["last"]}}
+      },
+      {
+        "type": "stat",
+        "title": "Active Sessions",
+        "gridPos": {"x": 4, "y": 0, "w": 4, "h": 4},
+        "datasource": {"name": "Prometheus"},
+        "targets": [{"expr": "honeypot_sessions_active", "refId": "A"}],
+        "options": {"reduceOptions": {"values": false, "calcs": ["last"]}}
+      },
+      {
+        "type": "stat",
+        "title": "Commands Logged",
+        "gridPos": {"x": 8, "y": 0, "w": 4, "h": 4},
+        "datasource": {"name": "Prometheus"},
+        "targets": [{"expr": "honeypot_commands_total", "refId": "A"}],
+        "options": {"reduceOptions": {"values": false, "calcs": ["last"]}}
+      },
+      {
+        "type": "stat",
+        "title": "IOCs Extracted",
+        "gridPos": {"x": 12, "y": 0, "w": 4, "h": 4},
+        "datasource": {"name": "Prometheus"},
+        "targets": [{"expr": "sum(honeypot_iocs_total)", "refId": "A"}],
+        "options": {"reduceOptions": {"values": false, "calcs": ["last"]}}
+      },
+      {
+        "type": "timeseries",
+        "title": "Attack Rate (per minute)",
+        "gridPos": {"x": 0, "y": 4, "w": 12, "h": 8},
+        "datasource": {"name": "Prometheus"},
+        "targets": [
+          {"expr": "rate(honeypot_attacks_total[1m])", "legendFormat": "{{protocol}} - {{type}}", "refId": "A"}
+        ]
+      },
+      {
+        "type": "barchart",
+        "title": "Attack Severity Distribution",
+        "gridPos": {"x": 12, "y": 4, "w": 12, "h": 8},
+        "datasource": {"name": "Prometheus"},
+        "targets": [
+          {"expr": "honeypot_attack_severity_bucket", "legendFormat": "severity ≤ {{le}}", "refId": "A"}
+        ]
+      },
+      {
+        "type": "heatmap",
+        "title": "Attacks by Protocol",
+        "gridPos": {"x": 0, "y": 12, "w": 12, "h": 8},
+        "datasource": {"name": "Prometheus"},
+        "targets": [
+          {"expr": "honeypot_attacks_total", "legendFormat": "{{protocol}}", "refId": "A"}
+        ]
+      },
+      {
+        "type": "timeseries",
+        "title": "API Response Time (95th percentile)",
+        "gridPos": {"x": 12, "y": 12, "w": 12, "h": 8},
+        "datasource": {"name": "Prometheus"},
+        "targets": [
+          {"expr": "histogram_quantile(0.95, rate(honeypot_response_time_seconds_bucket[5m]))", "refId": "A"}
+        ]
+      },
+      {
+        "type": "stat",
+        "title": "DB Queries (total)",
+        "gridPos": {"x": 0, "y": 20, "w": 6, "h": 4},
+        "datasource": {"name": "Prometheus"},
+        "targets": [{"expr": "sum(honeypot_db_queries_total)", "refId": "A"}],
+        "options": {"reduceOptions": {"values": false, "calcs": ["last"]}}
+      },
+      {
+        "type": "table",
+        "title": "DB Queries by Table",
+        "gridPos": {"x": 6, "y": 20, "w": 18, "h": 8},
+        "datasource": {"name": "Prometheus"},
+        "targets": [
+          {"expr": "honeypot_db_queries_total", "format": "table", "refId": "A"}
+        ]
+      }
+    ]
+  },
+  "overwrite": true,
+  "folderId": 0,
+  "message": "Monitoring dashboard - Prometheus metrics for infrastructure and attack rates"
+}

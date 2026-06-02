@@ -1,9 +1,18 @@
 apiVersion: 1
 
 providers:
-  - name: honeypot-dashboard
+  - name: honeypot-monitoring
     orgId: 1
-    folder: Honeypot
+    folder: Honeypot Monitoring
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /etc/grafana/provisioning/dashboards
+
+  - name: honeypot-investigation
+    orgId: 1
+    folder: Honeypot Investigation
     type: file
     disableDeletion: false
     editable: true

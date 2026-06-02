@@ -38,8 +38,7 @@ services:
       POSTGRES_PASSWORD: ${PG_PASS:-demo}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - postgres_logs:/var/lib/postgresql/data/log
-      - ./migrations:/migrations
+      - ./migrations:/docker-entrypoint-initdb.d
 
   # Cache & Queue
   redis:
@@ -111,7 +110,8 @@ services:
       - grafana_data:/var/lib/grafana
       - ./grafana/datasource.yaml:/etc/grafana/provisioning/datasources/datasource.yaml:ro
       - ./grafana/dashboard.yaml:/etc/grafana/provisioning/dashboards/dashboard.yaml:ro
-      - ./grafana/dashboard.json:/etc/grafana/provisioning/dashboards/honeypot.json:ro
+      - ./grafana/dashboard-monitoring.json:/etc/grafana/provisioning/dashboards/monitoring.json:ro
+      - ./grafana/dashboard-investigation.json:/etc/grafana/provisioning/dashboards/investigation.json:ro
 
 volumes:
   postgres_data:
