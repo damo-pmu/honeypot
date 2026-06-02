@@ -12,10 +12,14 @@ from src.api.endpoints.enrichment import router as enrichment_router
 from src.api.endpoints.ioc import router as ioc_router
 from src.api.endpoints.response import router as response_router
 from src.api.endpoints.dashboard import router as dashboard_router
+from src.api.endpoints.attacks import router as attacks_router
 
 # Import audit middleware
 from src.api.middleware.audit import AuditMiddleware
 from src.infrastructure.observability.metrics import metrics_endpoint
+
+# Import database
+from src.core.database import init_db
 
 app = FastAPI(
     title="Honeypot Threat Intelligence API",
@@ -43,11 +47,15 @@ app.include_router(enrichment_router)
 app.include_router(ioc_router)
 app.include_router(response_router)
 app.include_router(dashboard_router)
+app.include_router(attacks_router)
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize database on app startup"""
+    init_db()
+
 
 @app.get("/health")
 def health():
     return {"status": "ok", "version": "0.1.0"}
-
-@app.get("/metrics")
-def metrics():
-    return metrics_endpoint()

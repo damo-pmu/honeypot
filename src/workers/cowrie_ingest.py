@@ -60,70 +60,144 @@ def get_threat_class(commands: List[str]) -> str:
     return "UNKNOWN"
 
 
+def get_severity(command: str) -> int:
+    """Calculate severity score for command (0-100)"""
+    cmd = command.lower()
+    if any(x in cmd for x in ["wget", "curl", "/dev/tcp", "nc "]):
+        return 80
+    if any(x in cmd for x in ["passwd", "shadow", "/etc/", "sqlmap"]):
+        return 90
+    if any(x in cmd for x in ["nmap", "masscan", "nikto"]):
+        return 60
+    return 30
+
+
 def trigger_decoy_response(session_id: str, attacker_ip: str, threat_class: str, interaction_count: int):
     """Trigger decoy response based on threat classification"""
-    # Import here to avoid circular deps
-    from src.response.router import decide_response, get_response_content
-    
-    decision = decide_response(
-        session_id=session_id,
-        attacker_ip=attacker_ip,
-        threat_class=threat_class,
-        confidence=0.8,
-        interaction_count=interaction_count
-    )
-    
-    if decision.response_type.value != "terminate" and decision.template_name:
-        content = get_response_content(decision.template_name)
-        if content:
-            # Log response to API (for audit trail)
-            send_to_api("/response/responses/log", {
-                "session_id": session_id,
-                "attacker_ip": attacker_ip,
-                "template": decision.template_name,
-                "content": content,
-                "threat_class": threat_class
-            })
-            return content
-    return None
+    send_to_api("/dashboard/emit", {
+        "event_type": "threat_class",
+        "data": {"session_id": session_id, "ip": attacker_ip, "threat_class": threat_class, "count": interaction_count}
+    })
 
 
 def process_command_with_ioc(command: str, session_id: str, src_ip: str):
-    """Process command and extract IOC data
-    
-    Args:
-        command: Raw command from attacker
-        session_id: Session identifier
-        src_ip: Source IP of attacker
-    """
-    # Extract IOCs
+    """Process command and extract IOC data"""
     iocs = scan_for_iocs(command)
     
-    if iocs["total"] > 0 if "total" in iocs else any(iocs.values()):
-        # Send IOC data to API
-        for h in iocs.get("hashes", []):
-            send_to_api("/ioc/store", {
-                "ioc_type": "hash",
-                "value": h,
-                "related_session_id": session_id,
-                "related_attacker_ip": src_ip
-            })
+    for h in iocs.get("hashes", []):
+        send_to_api("/ioc/store", {
+            "ioc_type": "hash",
+            "value": h,
+            "related_session_id": session_id,
+            "related_attacker_ip": src_ip
+        })
+    
+    for ip in iocs.get("ips", []):
+        send_to_api("/ioc/store", {
+            "ioc_type": "ip",
+            "value": ip,
+            "related_session_id": session_id,
+            "related_attacker_ip": src_ip
+        })
+    
+    for url in iocs.get("urls", []):
+        send_to_api("/ioc/store", {
+            "ioc_type": "url",
+            "value": url,
+            "related_session_id": session_id,
+            "related_attacker_ip": src_ip
+        })
+
+
+def process_event(line: str):
+    """Process a single Cowrie event line"""
+    event = parse_cowrie_event(line)
+    if not event:
+        return
+    
+    event_id = event.get("eventid", "")
+    src_ip = event.get("src_ip", "unknown")
+    src_port = event.get("src_port", 0)
+    session_id = f"{src_ip}:{src_port}"
+    
+    if "login" in event_id:
+        # Login attempt - create attacker + session
+        username = event.get("username", "")
+        password = event.get("password", "")
         
-        for ip in iocs.get("ips", []):
-            send_to_api("/ioc/store", {
-                "ioc_type": "ip",
-                "value": ip,
-                "related_session_id": session_id,
-                "related_attacker_ip": src_ip
-            })
+        send_to_api("/attackers", {"ip": src_ip})
+        send_to_api("/sessions", {
+            "id": session_id,
+            "attacker_ip": src_ip,
+            "protocol": "SSH"
+        })
         
-        for url in iocs.get("urls", []):
-            send_to_api("/ioc/store", {
-                "ioc_type": "url",
-                "value": url,
-                "related_session_id": session_id,
-                "related_attacker_ip": src_ip
+        # Log attack event
+        send_to_api("/attacks/log", {
+            "session_id": session_id,
+            "attacker_ip": src_ip,
+            "attack_type": "BRUTE_FORCE",
+            "payload": f"{username}:{password}",
+            "severity": 70 if password else 50
+        })
+    
+    elif "command" in event_id:
+        command = event.get("input", event.get("command", ""))
+        
+        if session_id not in session_commands:
+            session_commands[session_id] = []
+        session_commands[session_id].append(command)
+        interaction_count = len(session_commands[session_id])
+        
+        send_to_api("/commands", {
+            "session_id": session_id,
+            "command": command
+        })
+        
+        send_to_api("/dashboard/emit", {
+            "event_type": "command",
+            "data": {"session_id": session_id, "ip": src_ip, "command": command[:100]}
+        })
+        
+        process_command_with_ioc(command, session_id, src_ip)
+        
+        # Log attack with severity
+        send_to_api("/attacks/log", {
+            "session_id": session_id,
+            "attacker_ip": src_ip,
+            "attack_type": "COMMAND_EXECUTION",
+            "payload": command[:500],
+            "severity": get_severity(command)
+        })
+        
+        threat_class = get_threat_class(session_commands[session_id])
+        trigger_decoy_response(session_id, src_ip, threat_class, interaction_count)
+    
+    elif "download" in event_id:
+        url = event.get("url", "")
+        if url:
+            process_command_with_ioc(url, "download", src_ip)
+            send_to_api("/attacks/log", {
+                "session_id": session_id,
+                "attacker_ip": src_ip,
+                "attack_type": "MALWARE_DOWNLOAD",
+                "payload": url,
+                "severity": 95
             })
+    
+    elif "session.connect" in event_id:
+        send_to_api("/attackers", {"ip": src_ip})
+        send_to_api("/sessions", {
+            "id": session_id,
+            "attacker_ip": src_ip,
+            "protocol": "SSH"
+        })
+    
+    elif "session.closed" in event_id:
+        send_to_api("/dashboard/emit", {
+            "event_type": "session_end",
+            "data": {"session_id": session_id}
+        })
 
 
 def ingest_logs():
@@ -136,66 +210,16 @@ def ingest_logs():
     while not log_path.exists():
         time.sleep(2)
     
-    # Read existing + new lines
+    # Process existing content first (all historical events)
     with open(log_path, "r") as f:
-        f.seek(0, 2)  # Seek to end for new events only
+        for line in f:
+            process_event(line)
         
+        # Then watch for new events
         while True:
             line = f.readline()
             if line:
-                event = parse_cowrie_event(line)
-                
-                if "login" in event:
-                    # New session started
-                    src_ip = event.get("src_ip", "unknown")
-                    src_port = event.get("src_port", 0)
-                    session_id = f"{src_ip}:{src_port}"
-                    
-                    send_to_api("/attackers", {"ip": src_ip})
-                    send_to_api("/sessions", {
-                        "id": session_id,
-                        "attacker_ip": src_ip,
-                        "protocol": "SSH"
-                    })
-                
-                elif "command" in event:
-                    src_ip = event.get("src_ip", "unknown")
-                    src_port = event.get("src_port", 0)
-                    session_id = f"{src_ip}:{src_port}"
-                    command = event["command"]
-                    
-                    # Track commands for threat classification
-                    if session_id not in session_commands:
-                        session_commands[session_id] = []
-                    session_commands[session_id].append(command)
-                    interaction_count = len(session_commands[session_id])
-                    
-                    # Send command
-                    send_to_api("/commands", {
-                        "session_id": session_id,
-                        "command": command
-                    })
-                    
-                    # Emit to dashboard (no auth needed for internal worker)
-                    send_to_api("/dashboard/emit", {
-                        "event_type": "command",
-                        "data": {"session_id": session_id, "ip": src_ip, "command": command[:100]}
-                    })
-                    
-                    # Scan for IOCs in command
-                    process_command_with_ioc(command, session_id, src_ip)
-                    
-                    # Trigger decoy response based on threat class
-                    threat_class = get_threat_class(session_commands[session_id])
-                    response = trigger_decoy_response(session_id, src_ip, threat_class, interaction_count)
-                
-                elif "download" in event:
-                    # Handle file downloads
-                    src_ip = event.get("src_ip", "unknown")
-                    url = event.get("url", "")
-                    if url:
-                        process_command_with_ioc(url, "download", src_ip)
-            
+                process_event(line)
             time.sleep(0.1)
 
 

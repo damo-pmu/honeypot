@@ -107,10 +107,32 @@ docker compose build --no-cache
 
 echo ""
 echo "[Docker] Starting services..."
+# Import dashboard via API
+import_dashboard() {
+    echo "[Grafana] Importing dashboard..."
+    sleep 5  # Wait for Grafana to be ready
+    
+    GRAFANA_PASS="${GRAFANA_PASS:-demo}"
+    if [ -f .env ]; then
+        GRAFANA_PASS=$(grep '^GRAFANA_PASS=' .env | cut -d'=' -f2 || echo "demo")
+    fi
+    
+    curl -s -u "admin:${GRAFANA_PASS}" \
+        -X POST "http://localhost:3000/api/dashboards/db" \
+        -H 'Content-Type: application/json' \
+        -d @grafana/dashboard.json > /dev/null 2>&1 && log_info "Dashboard imported" || log_warn "Dashboard import failed"
+}
+
+echo ""
 if [ "$FULL_MODE" = true ]; then
     docker compose --profile full up -d
 else
     docker compose up -d api postgres redis cowrie worker
+fi
+
+# Import dashboard after full mode
+if [ "$FULL_MODE" = true ] && [ "$DRY_RUN" = false ]; then
+    import_dashboard
 fi
 
 echo ""

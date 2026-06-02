@@ -1,51 +1,95 @@
-"""Sessions API endpoints - FastAPI"""
-from fastapi import APIRouter, HTTPException
+"""Sessions API endpoints - FastAPI with PostgreSQL"""
+from fastapi import APIRouter, HTTPException, Depends
 from typing import List
 from pydantic import BaseModel
+from datetime import datetime
+
+from sqlalchemy.orm import Session
+from src.core.database import get_db, SessionDB, AttackerDB
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
+
 
 class SessionBase(BaseModel):
     attacker_ip: str
     protocol: str
     interaction_count: int = 0
 
+
 class SessionCreate(SessionBase):
     pass
 
+
 class Session(SessionBase):
-    id: int
-    start_time: str
-    end_time: str | None = None
+    id: str
+    start_time: datetime
+    end_time: datetime | None = None
     duration_seconds: int | None = None
 
-# In-memory store
-_fake_sessions: List[Session] = [
-    Session(id=1, attacker_ip="192.168.1.1", protocol="ssh", start_time="2026-05-31T10:00:00", interaction_count=42),
-]
 
 @router.get("/", response_model=List[Session])
-def list_sessions():
+def list_sessions(db: Session = Depends(get_db)):
     """List all sessions"""
-    return _fake_sessions[:100]
+    sessions = db.query(SessionDB).order_by(SessionDB.start_time.desc()).limit(100).all()
+    return [
+        Session(
+            id=s.id,
+            attacker_ip=s.attacker_ip,
+            protocol=s.protocol,
+            start_time=s.start_time,
+            end_time=s.end_time,
+            interaction_count=s.interaction_count,
+            duration_seconds=s.duration_seconds
+        )
+        for s in sessions
+    ]
+
 
 @router.post("/", response_model=Session, status_code=201)
-def create_session(session: SessionCreate):
+def create_session(session: SessionCreate, db: Session = Depends(get_db)):
     """Create session entry"""
-    from datetime import datetime
-    new_id = max(s.id for s in _fake_sessions) + 1 if _fake_sessions else 1
-    new_session = Session(
-        id=new_id,
-        start_time=datetime.utcnow().isoformat(),
-        **session.model_dump()
+    # Ensure attacker exists
+    db_attacker = db.query(AttackerDB).filter(AttackerDB.ip == session.attacker_ip).first()
+    if not db_attacker:
+        db_attacker = AttackerDB(ip=session.attacker_ip)
+        db.add(db_attacker)
+        db.commit()
+    
+    db_session = SessionDB(
+        id=session.id,
+        attacker_ip=session.attacker_ip,
+        protocol=session.protocol,
+        start_time=datetime.utcnow(),
+        interaction_count=session.interaction_count
     )
-    _fake_sessions.append(new_session)
-    return new_session
+    db.add(db_session)
+    db.commit()
+    db.refresh(db_session)
+    
+    return Session(
+        id=db_session.id,
+        attacker_ip=db_session.attacker_ip,
+        protocol=db_session.protocol,
+        start_time=db_session.start_time,
+        end_time=db_session.end_time,
+        interaction_count=db_session.interaction_count,
+        duration_seconds=db_session.duration_seconds
+    )
+
 
 @router.get("/{session_id}", response_model=Session)
-def get_session(session_id: int):
+def get_session(session_id: str, db: Session = Depends(get_db)):
     """Get session by ID"""
-    for session in _fake_sessions:
-        if session.id == session_id:
-            return session
-    raise HTTPException(status_code=404, detail="Session not found")
+    db_session = db.query(SessionDB).filter(SessionDB.id == session_id).first()
+    if not db_session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    return Session(
+        id=db_session.id,
+        attacker_ip=db_session.attacker_ip,
+        protocol=db_session.protocol,
+        start_time=db_session.start_time,
+        end_time=db_session.end_time,
+        interaction_count=db_session.interaction_count,
+        duration_seconds=db_session.duration_seconds
+    )

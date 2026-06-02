@@ -1,8 +1,9 @@
 {
   "dashboard": {
     "id": null,
-    "title": "Honeypot Threat Intelligence",
-    "tags": ["honeypot", "security", "threat-intel"],
+    "uid": "honeypot-overview",
+    "title": "Honeypot Security Dashboard",
+    "tags": ["honeypot", "security"],
     "timezone": "browser",
     "schemaVersion": 38,
     "version": 1,
@@ -10,43 +11,99 @@
     "panels": [
       {
         "type": "stat",
-        "title": "Total Attacks",
-        "gridPos": {"x": 0, "y": 0, "w": 6, "h": 4},
-        "targets": [{"expr": "honeypot_attacks_total", "refId": "A"}],
-        "options": {"reduceOptions": {"values": false, "calcs": ["last"]}}
+        "title": "Total Attacks (DB)",
+        "gridPos": {"x": 0, "y": 0, "w": 4, "h": 4},
+        "datasource": {"name": "PostgreSQL"},
+        "targets": [{"rawSql": "SELECT COUNT(*) FROM attacks", "refId": "A"}]
       },
       {
         "type": "stat",
-        "title": "Active Sessions",
-        "gridPos": {"x": 6, "y": 0, "w": 6, "h": 4},
-        "targets": [{"expr": "honeypot_sessions_active", "refId": "A"}],
-        "options": {"reduceOptions": {"values": false, "calcs": ["last"]}}
+        "title": "Unique Attackers",
+        "gridPos": {"x": 4, "y": 0, "w": 4, "h": 4},
+        "datasource": {"name": "PostgreSQL"},
+        "targets": [{"rawSql": "SELECT COUNT(DISTINCT attacker_ip) FROM attackers", "refId": "A"}]
       },
       {
-        "type": "graph",
-        "title": "Attacks by Protocol",
-        "gridPos": {"x": 12, "y": 0, "w": 12, "h": 8},
-        "targets": [{"expr": "rate(honeypot_attacks_total[5m])", "legendFormat": "{{protocol}}"}]
+        "type": "stat",
+        "title": "Total IOCs",
+        "gridPos": {"x": 8, "y": 0, "w": 4, "h": 4},
+        "datasource": {"name": "PostgreSQL"},
+        "targets": [{"rawSql": "SELECT COUNT(*) FROM ioc_indicators", "refId": "A"}]
       },
       {
-        "type": "table",
-        "title": "Top Attacker IPs",
-        "gridPos": {"x": 0, "y": 4, "w": 12, "h": 8},
-        "targets": [{"expr": "topk(10, honeypot_attacks_total)"}]
-      },
-      {
-        "type": "heatmap",
-        "title": "Attack Severity Distribution",
-        "gridPos": {"x": 12, "y": 8, "w": 12, "h": 8},
-        "targets": [{"expr": "honeypot_attack_severity_bucket"}]
+        "type": "stat",
+        "title": "Commands Logged",
+        "gridPos": {"x": 12, "y": 0, "w": 4, "h": 4},
+        "datasource": {"name": "PostgreSQL"},
+        "targets": [{"rawSql": "SELECT COUNT(*) FROM commands", "refId": "A"}]
       },
       {
         "type": "timeseries",
-        "title": "Response Time (95th percentile)",
-        "gridPos": {"x": 0, "y": 12, "w": 24, "h": 8},
-        "targets": [{"expr": "histogram_quantile(0.95, rate(honeypot_response_time_seconds_bucket[5m]))"}]
+        "title": "Attack Timeline (24h)",
+        "gridPos": {"x": 0, "y": 4, "w": 12, "h": 8},
+        "datasource": {"name": "PostgreSQL"},
+        "targets": [{
+          "rawSql": "SELECT date_trunc('hour', timestamp) as time, attack_type, count(*) as attacks FROM attacks WHERE timestamp > NOW() - INTERVAL '24 hours' GROUP BY 1, 2 ORDER BY 1",
+          "refId": "A"
+        }]
+      },
+      {
+        "type": "table",
+        "title": "Top Attackers by Severity",
+        "gridPos": {"x": 12, "y": 4, "w": 12, "h": 8},
+        "datasource": {"name": "PostgreSQL"},
+        "targets": [{
+          "rawSql": "SELECT DISTINCT ON (attacker_ip) attacker_ip, MAX(severity) as max_severity, COUNT(*) as attack_count FROM attacks GROUP BY attacker_ip ORDER BY max_severity DESC LIMIT 20",
+          "refId": "A"
+        }]
+      },
+      {
+        "type": "table",
+        "title": "Recent Attacks Feed",
+        "gridPos": {"x": 0, "y": 12, "w": 12, "h": 8},
+        "datasource": {"name": "PostgreSQL"},
+        "targets": [{
+          "rawSql": "SELECT timestamp, session_id, attacker_ip, attack_type, LEFT(payload, 50) as payload_snippet, severity FROM attacks ORDER BY timestamp DESC LIMIT 50",
+          "refId": "A"
+        }]
+      },
+      {
+        "type": "barchart",
+        "title": "Attack Types Distribution",
+        "gridPos": {"x": 12, "y": 12, "w": 12, "h": 8},
+        "datasource": {"name": "PostgreSQL"},
+        "targets": [{
+          "rawSql": "SELECT attack_type, COUNT(*) as count FROM attacks GROUP BY attack_type ORDER BY count DESC",
+          "refId": "A"
+        }]
+      },
+      {
+        "type": "table",
+        "title": "IOC Indicators by Hit Count",
+        "gridPos": {"x": 0, "y": 20, "w": 12, "h": 8},
+        "datasource": {"name": "PostgreSQL"},
+        "targets": [{
+          "rawSql": "SELECT ioc_type, value, hit_count, source, DATE(first_seen) as first_seen_date FROM ioc_indicators ORDER BY hit_count DESC LIMIT 30",
+          "refId": "A"
+        }]
+      },
+      {
+        "type": "stat",
+        "title": "Flagged Commands",
+        "gridPos": {"x": 12, "y": 20, "w": 4, "h": 4},
+        "datasource": {"name": "PostgreSQL"},
+        "targets": [{"rawSql": "SELECT COUNT(*) FROM commands WHERE flagged = true", "refId": "A"}]
+      },
+      {
+        "type": "stat",
+        "title": "Avg Severity",
+        "gridPos": {"x": 16, "y": 20, "w": 4, "h": 4},
+        "datasource": {"name": "PostgreSQL"},
+        "targets": [{"rawSql": "SELECT ROUND(AVG(severity)) FROM attacks", "refId": "A"}]
       }
     ]
   },
-  "overwrite": true
+  "overwrite": true,
+  "folderId": 0,
+  "message": "Honeypot dashboard - PostgreSQL powered"
 }

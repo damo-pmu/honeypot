@@ -54,7 +54,7 @@ CREATE TABLE commands (
 );
 
 CREATE INDEX idx_commands_session_id ON commands(session_id);
-CREATE INDEX idx_commands_flagged ON commands(flagged WHERE flagged = TRUE);
+CREATE INDEX idx_commands_flagged ON commands(flagged) WHERE flagged = TRUE;
 CREATE INDEX idx_commands_timestamp ON commands(timestamp DESC);
 
 -- Attack table with FK to session (denormalized attacker_ip for fast queries)

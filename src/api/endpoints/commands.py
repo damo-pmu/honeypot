@@ -1,48 +1,88 @@
-"""Commands API endpoints - FastAPI"""
-from fastapi import APIRouter, HTTPException
+"""Commands API endpoints - FastAPI with PostgreSQL"""
+from fastapi import APIRouter, HTTPException, Depends
 from typing import List
 from pydantic import BaseModel
+from datetime import datetime
+
+from sqlalchemy.orm import Session
+from src.core.database import get_db, CommandDB, SessionDB
 
 router = APIRouter(prefix="/commands", tags=["commands"])
 
+
 class CommandBase(BaseModel):
-    session_id: int
+    session_id: str
     command: str
-    timestamp: str | None = None
+    timestamp: datetime | None = None
+
 
 class CommandCreate(CommandBase):
     pass
 
+
 class Command(CommandBase):
     id: int
-    flagged: bool = False  # Auto-detection
+    flagged: bool = False
 
-_fake_commands: List[Command] = [
-    Command(id=1, session_id=1, command="whoami", flagged=False),
-    Command(id=2, session_id=1, command="cat /etc/passwd", flagged=True),
-]
 
 @router.get("/", response_model=List[Command])
-def list_commands():
+def list_commands(db: Session = Depends(get_db)):
     """List all commands"""
-    return _fake_commands[:100]
+    cmds = db.query(CommandDB).order_by(CommandDB.timestamp.desc()).limit(100).all()
+    return [
+        Command(
+            id=c.id,
+            session_id=c.session_id,
+            command=c.command,
+            timestamp=c.timestamp,
+            flagged=c.flagged
+        )
+        for c in cmds
+    ]
+
 
 @router.post("/", response_model=Command, status_code=201)
-def create_command(cmd: CommandCreate):
+def create_command(cmd: CommandCreate, db: Session = Depends(get_db)):
     """Log command execution"""
-    from datetime import datetime
-    new_id = max(c.id for c in _fake_commands) + 1 if _fake_commands else 1
+    # Ensure session exists
+    db_session = db.query(SessionDB).filter(SessionDB.id == cmd.session_id).first()
+    if not db_session:
+        db_session = SessionDB(id=cmd.session_id, attacker_ip="unknown")
+        db.add(db_session)
+        db.commit()
+    
     flagged = any(kw in cmd.command.lower() for kw in ["passwd", "shadow", "root", "sudo"])
-    new_cmd = Command(
-        id=new_id,
-        timestamp=datetime.utcnow().isoformat(),
-        flagged=flagged,
-        **cmd.model_dump()
+    
+    db_cmd = CommandDB(
+        session_id=cmd.session_id,
+        command=cmd.command,
+        timestamp=cmd.timestamp or datetime.utcnow(),
+        flagged=flagged
     )
-    _fake_commands.append(new_cmd)
-    return new_cmd
+    db.add(db_cmd)
+    db.commit()
+    db.refresh(db_cmd)
+    
+    return Command(
+        id=db_cmd.id,
+        session_id=db_cmd.session_id,
+        command=db_cmd.command,
+        timestamp=db_cmd.timestamp,
+        flagged=db_cmd.flagged
+    )
+
 
 @router.get("/session/{session_id}", response_model=List[Command])
-def get_commands_by_session(session_id: int):
+def get_commands_by_session(session_id: str, db: Session = Depends(get_db)):
     """Get all commands for a session"""
-    return [c for c in _fake_commands if c.session_id == session_id]
+    cmds = db.query(CommandDB).filter(CommandDB.session_id == session_id).all()
+    return [
+        Command(
+            id=c.id,
+            session_id=c.session_id,
+            command=c.command,
+            timestamp=c.timestamp,
+            flagged=c.flagged
+        )
+        for c in cmds
+    ]

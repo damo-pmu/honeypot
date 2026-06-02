@@ -7,3 +7,19 @@ datasources:
     url: http://prometheus:9090
     isDefault: true
     editable: false
+    jsonData:
+      timeInterval: "15s"
+  
+  - name: PostgreSQL
+    type: postgres
+    access: proxy
+    url: postgres:5432
+    editable: true
+    jsonData:
+      database: honeypot
+      user: honeypot
+      secureJsonData:
+        password: "${GRAFANA_DB_PASSWORD}"
+    secureJsonFields:
+      password:
+        - GRAFANA_DB_PASSWORD

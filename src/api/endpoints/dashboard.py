@@ -25,6 +25,8 @@ _event_counts = Counter()  # Track attack types
 
 def add_event(event_type: str, data: dict):
     """Add event to dashboard stream"""
+    from ...infrastructure.observability.metrics import attacks_total, sessions_active, attack_severity
+    
     event = {
         "type": event_type,
         "data": data,
@@ -32,6 +34,14 @@ def add_event(event_type: str, data: dict):
     }
     _dashboard_events.append(event)
     _event_counts[event_type] += 1
+    
+    # Increment Prometheus metrics
+    protocol = data.get("protocol", "unknown")
+    attacks_total.labels(protocol=protocol, type=event_type).inc()
+    
+    # Track session activity
+    if "session_id" in data:
+        sessions_active.inc()
     
     # Keep last 100 events
     if len(_dashboard_events) > 100:
