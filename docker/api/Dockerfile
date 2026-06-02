@@ -8,6 +8,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY src/ ./src/
 COPY app.py .
 COPY docker/api/entrypoint.sh /entrypoint.sh
+COPY scripts/db_maintenance.py /app/scripts/
 RUN chmod +x /entrypoint.sh
 
 EXPOSE 8000

@@ -1,6 +1,6 @@
 """SQLAlchemy database configuration and models - PostgreSQL integration"""
 import os
-from sqlalchemy import create_engine, Column, String, Integer, Boolean, DateTime, Text, ForeignKey, JSON, DECIMAL
+from sqlalchemy import create_engine, Column, String, Integer, Boolean, DateTime, Text, ForeignKey, JSON, DECIMAL, Index
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from datetime import datetime
@@ -50,6 +50,10 @@ class SessionDB(Base):
 
 class CommandDB(Base):
     __tablename__ = "commands"
+    __table_args__ = (
+        Index('idx_commands_session_ts', 'session_id', 'timestamp'),
+        Index('idx_commands_flagged', 'flagged'),
+    )
     
     id = Column(Integer, primary_key=True, autoincrement=True)
     session_id = Column(String(100), ForeignKey("sessions.id", ondelete="CASCADE"), nullable=False)
@@ -61,6 +65,11 @@ class CommandDB(Base):
 
 class AttackDB(Base):
     __tablename__ = "attacks"
+    __table_args__ = (
+        Index('idx_attacks_ts', 'timestamp'),
+        Index('idx_attacks_session', 'session_id'),
+        Index('idx_attacks_severity', 'severity'),
+    )
     
     id = Column(Integer, primary_key=True, autoincrement=True)
     session_id = Column(String(100), ForeignKey("sessions.id", ondelete="CASCADE"), nullable=False)
