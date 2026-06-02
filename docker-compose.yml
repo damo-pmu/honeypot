@@ -107,13 +107,12 @@ services:
       - GF_SERVER_ROOT_URL=/grafana
       - GF_SERVER_SERVE_FROM_SUB_PATH=true
     # Dashboard JSON files mounted for setup.sh API import (Grafana 11 provisioning disabled)
-    # volumes:
-    #   - grafana_data:/var/lib/grafana
-    #   - ./grafana/datasource.yaml:/etc/grafana/provisioning/datasources/datasource.yaml:ro
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/datasource.yaml:/etc/grafana/provisioning/datasources/datasource.yaml:ro
     #   - ./grafana/dashboard.yaml:/etc/grafana/provisioning/dashboards/dashboard.yaml:ro
     #   - ./grafana/dashboard-monitoring.json:/etc/grafana/provisioning/dashboards/monitoring.json:ro
     #   - ./grafana/dashboard-investigation.json:/etc/grafana/provisioning/dashboards/investigation.json:ro
-      - grafana_data:/var/lib/grafana
 
 volumes:
   postgres_data:
