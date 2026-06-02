@@ -1,0 +1,46 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Investigation",
+    "tags": ["honeypot", "forensics"],
+    "timezone": "browser",
+    "schemaVersion": 36,
+    "version": 1,
+    "refresh": "5s",
+    "panels": [
+      {
+        "type": "table",
+        "title": "Recent Attacks",
+        "gridPos": {"x": 0, "y": 0, "w": 24, "h": 12},
+        "datasource": {"type": "postgres", "name": "PostgreSQL"},
+        "targets": [{
+          "refId": "A",
+          "rawSql": "SELECT timestamp, attacker_ip, protocol, attack_type, severity FROM attacks ORDER BY timestamp DESC LIMIT 100"
+        }]
+      },
+      {
+        "type": "table",
+        "title": "Top Attackers",
+        "gridPos": {"x": 0, "y": 12, "w": 12, "h": 8},
+        "datasource": {"type": "postgres", "name": "PostgreSQL"},
+        "targets": [{
+          "refId": "A",
+          "rawSql": "SELECT attacker_ip, COUNT(*) as attacks FROM attacks GROUP BY attacker_ip ORDER BY attacks DESC LIMIT 20"
+        }]
+      },
+      {
+        "type": "table",
+        "title": "IOC Indicators",
+        "gridPos": {"x": 12, "y": 12, "w": 12, "h": 8},
+        "datasource": {"type": "postgres", "name": "PostgreSQL"},
+        "targets": [{
+          "refId": "A",
+          "rawSql": "SELECT ioc_type, value, confidence, hit_count, first_seen FROM ioc_indicators ORDER BY hit_count DESC LIMIT 50"
+        }]
+      }
+    ]
+  },
+  "overwrite": true,
+  "folderId": 0,
+  "message": "Investigation dashboard for honeypot forensics"
+}

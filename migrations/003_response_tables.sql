@@ -13,9 +13,9 @@ CREATE TABLE IF NOT EXISTS responses (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_responses_session ON responses(session_id);
-CREATE INDEX idx_responses_attacker ON responses(attacker_ip);
-CREATE INDEX idx_responses_timestamp ON responses(timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_responses_session ON responses(session_id);
+CREATE INDEX IF NOT EXISTS idx_responses_attacker ON responses(attacker_ip);
+CREATE INDEX IF NOT EXISTS idx_responses_timestamp ON responses(timestamp DESC);
 
 -- Decoy assets deployed
 CREATE TABLE IF NOT EXISTS decoys (
@@ -28,5 +28,5 @@ CREATE TABLE IF NOT EXISTS decoys (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_decoys_template ON decoys(template_name);
-CREATE INDEX idx_decoys_session ON decoys(session_id);
+CREATE INDEX IF NOT EXISTS idx_decoys_template ON decoys(template_name);
+CREATE INDEX IF NOT EXISTS idx_decoys_session ON decoys(session_id);

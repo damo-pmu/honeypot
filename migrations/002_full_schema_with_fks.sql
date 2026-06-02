@@ -76,8 +76,8 @@ CREATE INDEX idx_attacks_attacker_ip ON attacks(attacker_ip);
 CREATE INDEX idx_attacks_timestamp ON attacks(timestamp DESC);
 CREATE INDEX idx_attacks_severity ON attacks(severity DESC);
 
--- IOC Indicator table (updated)
-CREATE TABLE ioc_indicators (
+-- IOC Indicator table (updated) - idempotent
+CREATE TABLE IF NOT EXISTS ioc_indicators (
     id SERIAL PRIMARY KEY,
     ioc_type VARCHAR(20) NOT NULL CHECK (ioc_type IN ('hash', 'ip', 'domain', 'url')),
     value TEXT NOT NULL,
@@ -90,11 +90,11 @@ CREATE TABLE ioc_indicators (
     updated_at TIMESTAMP WITH TIME ZONE
 );
 
-CREATE UNIQUE INDEX idx_ioc_unique ON ioc_indicators(ioc_type, value);
-CREATE INDEX idx_ioc_value ON ioc_indicators(value);
-CREATE INDEX idx_ioc_type ON ioc_indicators(ioc_type);
-CREATE INDEX idx_ioc_hit_count ON ioc_indicators(hit_count DESC);
-CREATE INDEX idx_ioc_first_seen ON ioc_indicators(first_seen DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_ioc_unique ON ioc_indicators(ioc_type, value);
+CREATE INDEX IF NOT EXISTS idx_ioc_value ON ioc_indicators(value);
+CREATE INDEX IF NOT EXISTS idx_ioc_type ON ioc_indicators(ioc_type);
+CREATE INDEX IF NOT EXISTS idx_ioc_hit_count ON ioc_indicators(hit_count DESC);
+CREATE INDEX IF NOT EXISTS idx_ioc_first_seen ON ioc_indicators(first_seen DESC);
 
 -- Many-to-Many link between IOC and Session
 CREATE TABLE ioc_session_link (
