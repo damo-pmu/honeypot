@@ -6,7 +6,11 @@ from pydantic import BaseModel
 
 from sqlalchemy.orm import Session
 from src.core.database import get_db, AttackDB, SessionDB, AttackerDB
-from src.infrastructure.observability.metrics import attacks_total, db_queries, attack_severity
+from src.infrastructure.observability.metrics import (
+    attacks_total, db_queries, attack_severity,
+    sessions_total, attackers_total, top_attackers,
+    payload_size_bytes
+)
 
 router = APIRouter(prefix="/attacks", tags=["attacks"])
 
@@ -33,6 +37,8 @@ def log_attack(attack: AttackLog, db: Session = Depends(get_db)):
         db_attacker = AttackerDB(ip=attack.attacker_ip, threat_score=50)
         db.add(db_attacker)
         db.commit()
+        attackers_total.labels(threat_level="new").inc()
+        top_attackers.labels(attacker_ip=attack.attacker_ip, country="unknown").inc()
     
     # Ensure session exists
     db_session = db.query(SessionDB).filter(SessionDB.id == attack.session_id).first()
@@ -44,6 +50,7 @@ def log_attack(attack: AttackLog, db: Session = Depends(get_db)):
         )
         db.add(db_session)
         db.commit()
+        sessions_total.labels(protocol=attack.protocol).inc()
     
     # Log attack
     db_attack = AttackDB(
@@ -68,6 +75,11 @@ def log_attack(attack: AttackLog, db: Session = Depends(get_db)):
     ).inc()
     
     attack_severity.observe(attack.severity)
+    
+    # Payload size histogram
+    if attack.payload:
+        payload_size_bytes.labels(attack_type=attack.attack_type or "unknown").observe(len(attack.payload))
+    
     db_queries.labels(operation="INSERT", table="attacks").inc()
     
     return {
@@ -112,3 +124,19 @@ def get_attack_feed(limit: int = 100, db: Session = Depends(get_db)):
         }
         for a in attacks
     ]
+
+
+@router.get("/metrics/summary", response_model=dict)
+def get_metrics_summary(db: Session = Depends(get_db)):
+    """Get summary metrics for Grafana dashboard - single API call for all counts"""
+    total_attacks = db.query(AttackDB).count()
+    unique_ips = db.query(AttackerDB).count()
+    total_iocs = db.query(AttackerDB).count()
+    active_sessions = db.query(SessionDB).filter(SessionDB.end_time.is_(None)).count()
+    
+    return {
+        "total_attacks": total_attacks,
+        "unique_attackers": unique_ips,
+        "total_iocs": total_iocs,
+        "active_sessions": active_sessions
+    }

@@ -95,7 +95,7 @@ services:
       - prometheus_data:/prometheus
 
   grafana:
-    image: grafana/grafana-enterprise
+    image: grafana/grafana:11.0.0
     env_file: .env
     ports:
       - "127.0.0.1:${GRAFANA_PORT:-3000}:3000"  # localhost only - Apache reverse proxy
@@ -106,14 +106,13 @@ services:
       - GF_USERS_ALLOW_SIGN_UP=false
       - GF_SERVER_ROOT_URL=/grafana
       - GF_SERVER_SERVE_FROM_SUB_PATH=true
-      - POSTGRES_PASSWORD=${PG_PASS:-demo}
-      - GRAFANA_DB_PASSWORD=${GRAFANA_DB_PASSWORD:-demo}
+    # Dashboard JSON files mounted for setup.sh API import (Grafana 11 provisioning disabled)
     volumes:
       - grafana_data:/var/lib/grafana
       - ./grafana/datasource.yaml:/etc/grafana/provisioning/datasources/datasource.yaml:ro
-      - ./grafana/dashboard.yaml:/etc/grafana/provisioning/dashboards/dashboard.yaml:ro
-      - ./grafana/dashboard-monitoring.json:/etc/grafana/provisioning/dashboards/monitoring.json:ro
-      - ./grafana/dashboard-investigation.json:/etc/grafana/provisioning/dashboards/investigation.json:ro
+#     - ./grafana/dashboard.yaml:/etc/grafana/provisioning/dashboards/dashboard.yaml:ro
+#     - ./grafana/dashboard-monitoring.json:/etc/grafana/provisioning/dashboards/monitoring.json:ro
+#     - ./grafana/dashboard-investigation.json:/etc/grafana/provisioning/dashboards/investigation.json:ro
 
 volumes:
   postgres_data:

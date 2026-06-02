@@ -7,12 +7,15 @@ from starlette.types import ASGIApp
 import json
 
 from ...utils.audit_logger import get_audit_logger
+from ...infrastructure.observability.metrics import (
+    response_time, api_requests, db_query_duration, db_queries
+)
 
 api_logger = get_audit_logger("honeypot.api")
 
 
 class AuditMiddleware(BaseHTTPMiddleware):
-    """Log all API requests and responses for debugging"""
+    """Log all API requests and responses for debugging + Prometheus metrics"""
     
     async def dispatch(self, request: Request, call_next):
         start_time = time.time()
@@ -33,6 +36,18 @@ class AuditMiddleware(BaseHTTPMiddleware):
             response = await call_next(request)
             duration = time.time() - start_time
             
+            # Prometheus metrics - API response time and requests
+            response_time.labels(
+                endpoint=request.url.path,
+                method=request.method
+            ).observe(duration)
+            
+            api_requests.labels(
+                endpoint=request.url.path,
+                method=request.method,
+                status=str(response.status_code)
+            ).inc()
+            
             # Log response
             api_logger.info(
                 f"Response {request.method} {request.url.path}: {response.status_code}",
@@ -47,6 +62,13 @@ class AuditMiddleware(BaseHTTPMiddleware):
             
         except Exception as e:
             duration = time.time() - start_time
+            
+            # Record failed request
+            api_requests.labels(
+                endpoint=request.url.path,
+                method=request.method,
+                status="500"
+            ).inc()
             
             api_logger.error(
                 f"Error in {request.method} {request.url.path}: {str(e)}",

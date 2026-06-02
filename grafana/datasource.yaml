@@ -9,15 +9,3 @@ datasources:
     editable: false
     jsonData:
       timeInterval: "15s"
-    
-  - name: PostgreSQL
-    type: postgres
-    access: proxy
-    url: postgres:5432
-    editable: false
-    jsonData:
-      database: honeypot
-      user: honeypot
-    secureJsonData:
-      password: "demo"
-    version: 1

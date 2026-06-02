@@ -9,12 +9,3 @@ providers:
     editable: true
     options:
       path: /etc/grafana/provisioning/dashboards
-
-  - name: honeypot-investigation
-    orgId: 1
-    folder: Honeypot Investigation
-    type: file
-    disableDeletion: false
-    editable: true
-    options:
-      path: /etc/grafana/provisioning/dashboards

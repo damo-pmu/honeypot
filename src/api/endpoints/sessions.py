@@ -6,6 +6,7 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session
 from src.core.database import get_db, SessionDB, AttackerDB
+from src.infrastructure.observability.metrics import sessions_total, sessions_active
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
 
@@ -64,6 +65,11 @@ def create_session(session: SessionCreate, db: Session = Depends(get_db)):
     )
     db.add(db_session)
     db.commit()
+    
+    # Prometheus metric
+    sessions_total.labels(protocol=session.protocol).inc()
+    sessions_active.inc()
+    
     db.refresh(db_session)
     
     return Session(
@@ -83,6 +89,37 @@ def get_session(session_id: str, db: Session = Depends(get_db)):
     db_session = db.query(SessionDB).filter(SessionDB.id == session_id).first()
     if not db_session:
         raise HTTPException(status_code=404, detail="Session not found")
+    
+    return Session(
+        id=db_session.id,
+        attacker_ip=db_session.attacker_ip,
+        protocol=db_session.protocol,
+        start_time=db_session.start_time,
+        end_time=db_session.end_time,
+        interaction_count=db_session.interaction_count,
+        duration_seconds=db_session.duration_seconds
+    )
+
+
+@router.put("/{session_id}/end", response_model=Session)
+def end_session(session_id: str, db: Session = Depends(get_db)):
+    """End session and record duration metric"""
+    from src.infrastructure.observability.metrics import session_duration
+    db_session = db.query(SessionDB).filter(SessionDB.id == session_id).first()
+    if not db_session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    db_session.end_time = datetime.utcnow()
+    if db_session.start_time:
+        duration = (db_session.end_time - db_session.start_time).total_seconds()
+        db_session.duration_seconds = int(duration)
+        session_duration.observe(duration)
+    
+    # Decrement active session gauge
+    sessions_active.dec()
+    
+    db.commit()
+    db.refresh(db_session)
     
     return Session(
         id=db_session.id,
