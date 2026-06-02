@@ -1,6 +1,7 @@
 """FastAPI entry point for honeypot framework"""
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 # Import routers
 from src.api.endpoints.attackers import router as attackers_router
@@ -36,6 +37,9 @@ app.add_middleware(
 
 # Audit logging middleware
 app.add_middleware(AuditMiddleware)
+
+# Static files mount for dashboard assets
+app.mount("/static", StaticFiles(directory="src/static"), name="static")
 
 # Include routers
 app.include_router(attackers_router)

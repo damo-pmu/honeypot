@@ -1,0 +1,88 @@
+/* SOC Dashboard - Custom Styles (Tailwind extensions) */
+
+/* Terminal styling */
+.terminal-bg {
+    background: #000000;
+    border: 1px solid #111111;
+}
+
+/* Scrollbar dark theme */
+.overflow-y-auto::-webkit-scrollbar {
+    width: 8px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-track {
+    background: #111111;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb {
+    background: #333333;
+    border-radius: 4px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+    background: #00ff88;
+}
+
+/* Live indicator pulse animation */
+@keyframes pulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(0, 255, 136, 0.7); }
+    50% { opacity: 0.5; box-shadow: 0 0 0 4px rgba(0, 255, 136, 0); }
+}
+
+.live-indicator {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    background: #00ff88;
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+}
+
+/* Event card styling */
+.event-card {
+    background: #111111;
+    border: 1px solid #333333;
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 8px;
+    transition: border-color 0.2s;
+}
+
+.event-card:hover {
+    border-color: #00ff88;
+}
+
+/* Severity badges */
+.severity-low { background: #00ff88; color: #000; }
+.severity-medium { background: #ffaa00; color: #000; }
+.severity-high { background: #ff6600; color: #fff; }
+.severity-critical { background: #ff4444; color: #fff; }
+
+/* Transition for Alpine x-cloak */
+[x-cloak] { display: none; }
+
+/* Leaflet map dark theme */
+.leaflet-container {
+    background: #0a0a0a;
+    color: #e0e0e0;
+}
+
+#map {
+    min-height: 300px;
+}
+
+.leaflet-popup-content {
+    color: #e0e0e0;
+}
+
+.leaflet-popup-content-wrapper {
+    background: #111111;
+    border: 1px solid #333333;
+}
+
+/* Flagged command highlighting */
+.command-flagged {
+    color: #ff4444;
+    text-shadow: 0 0 2px rgba(255, 68, 68, 0.5);
+}

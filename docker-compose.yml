@@ -22,6 +22,8 @@ services:
     volumes:
       - api_logs:/app/logs
       - api_data:/app/data
+      - ./src/static:/app/static:ro
+      - ./src/templates:/app/src/templates:ro
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
