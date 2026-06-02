@@ -19,7 +19,7 @@ datasources:
       database: honeypot
       user: honeypot
       secureJsonData:
-        password: "${GRAFANA_DB_PASSWORD}"
+        password: "demo"
     secureJsonFields:
       password:
         - GRAFANA_DB_PASSWORD
