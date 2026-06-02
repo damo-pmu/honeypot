@@ -1,17 +1,19 @@
 """Commands API endpoints - FastAPI with PostgreSQL"""
 from fastapi import APIRouter, HTTPException, Depends
-from typing import List
+from typing import List, Optional
 from pydantic import BaseModel
 from datetime import datetime
 
 from sqlalchemy.orm import Session
-from src.core.database import get_db, CommandDB, SessionDB
+from src.core.database import get_db, CommandDB, SessionDB, AttackerDB
+from src.infrastructure.observability.metrics import db_queries, commands_logged
 
 router = APIRouter(prefix="/commands", tags=["commands"])
 
 
 class CommandBase(BaseModel):
     session_id: str
+    attacker_ip: Optional[str] = "unknown"
     command: str
     timestamp: datetime | None = None
 
@@ -23,6 +25,10 @@ class CommandCreate(CommandBase):
 class Command(CommandBase):
     id: int
     flagged: bool = False
+    
+    class Config:
+        # Allow attacker_ip to be None/default to avoid overriding in response
+        from_attributes = True
 
 
 @router.get("/", response_model=List[Command])
@@ -44,10 +50,19 @@ def list_commands(db: Session = Depends(get_db)):
 @router.post("/", response_model=Command, status_code=201)
 def create_command(cmd: CommandCreate, db: Session = Depends(get_db)):
     """Log command execution"""
-    # Ensure session exists
+    attacker_ip = cmd.attacker_ip or "unknown"
+    
+    # Ensure attacker exists (idempotent FK handling)
+    db_attacker = db.query(AttackerDB).filter(AttackerDB.ip == attacker_ip).first()
+    if not db_attacker:
+        db_attacker = AttackerDB(ip=attacker_ip, threat_score=25)
+        db.add(db_attacker)
+        db.commit()
+    
+    # Ensure session exists (idempotent FK handling)
     db_session = db.query(SessionDB).filter(SessionDB.id == cmd.session_id).first()
     if not db_session:
-        db_session = SessionDB(id=cmd.session_id, attacker_ip="unknown")
+        db_session = SessionDB(id=cmd.session_id, attacker_ip=attacker_ip)
         db.add(db_session)
         db.commit()
     
@@ -63,9 +78,13 @@ def create_command(cmd: CommandCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(db_cmd)
     
+    commands_logged.labels(flagged=str(flagged)).inc()
+    db_queries.labels(operation="INSERT", table="commands").inc()
+    
     return Command(
         id=db_cmd.id,
         session_id=db_cmd.session_id,
+        attacker_ip=db_session.attacker_ip,
         command=db_cmd.command,
         timestamp=db_cmd.timestamp,
         flagged=db_cmd.flagged
