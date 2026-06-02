@@ -2,7 +2,8 @@
 import os
 import asyncio
 from datetime import datetime
-from fastapi import APIRouter, HTTPException, Depends, Request, Response
+from fastapi import APIRouter, HTTPException, Depends, Request, Response, Body
+from sqlalchemy.orm import Session
 from fastapi.responses import HTMLResponse, StreamingResponse, RedirectResponse
 from pydantic import BaseModel
 import json
@@ -13,8 +14,11 @@ from ..middleware.session import (
     create_session, get_session, clear_session, require_auth,
     DASHBOARD_PASSWORD, LOGIN_HTML, _sessions
 )
-# Import audit logger
+# Import database
+from ..core.database import get_db, SessionDB, AttackDB, CommandDB, AttackerDB
+# Import audit logger and dashboard service
 from ...utils.audit_logger import log_auth_event, log_dashboard_event
+from ...services.dashboard import DashboardService, DashboardRepository
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
@@ -329,4 +333,73 @@ def debug_status():
         "event_types": dict(_event_counts),
         "sessions_active": len(_sessions),
         "memory_usage": "ok"
+    }
+
+
+# ============================================================
+# API Endpoints (no auth for internal use, rate limited)
+# ============================================================
+
+@router.get("/api/live")
+def get_live_stats(db: Session = Depends(get_db)):
+    """Live dashboard stats - combines Prometheus + DB data"""
+    service = DashboardService(db)
+    return service.get_live_stats()
+
+
+@router.get("/api/sessions/{session_id}/timeline")
+def get_session_timeline(session_id: str, db: Session = Depends(get_db)):
+    """Full session timeline with all events"""
+    repo = DashboardRepository(db)
+    
+    # Get session info
+    session = db.query(SessionDB).filter(SessionDB.id == session_id).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    # Get attacks for this session
+    attacks = db.query(AttackDB).filter(
+        AttackDB.session_id == session_id
+    ).order_by(AttackDB.timestamp).all()
+    
+    # Get commands for this session
+    commands = db.query(CommandDB).filter(
+        CommandDB.session_id == session_id
+    ).order_by(CommandDB.timestamp).all()
+    
+    # Merge and sort timeline
+    timeline = []
+    for a in attacks:
+        timeline.append({
+            "type": "attack",
+            "timestamp": a.timestamp.isoformat(),
+            "data": {
+                "attack_type": a.attack_type,
+                "protocol": a.protocol,
+                "severity": a.severity,
+                "attacker_ip": a.attacker_ip
+            }
+        })
+    for c in commands:
+        timeline.append({
+            "type": "command",
+            "timestamp": c.timestamp.isoformat(),
+            "data": {
+                "command": c.command,
+                "is_flagged": c.is_flagged,
+                "attacker_ip": c.attacker_ip
+            }
+        })
+    
+    # Sort by timestamp
+    timeline.sort(key=lambda x: x["timestamp"])
+    
+    return {
+        "session_id": session_id,
+        "attacker_ip": session.attacker_ip,
+        "protocol": session.protocol,
+        "start_time": session.start_time.isoformat(),
+        "end_time": session.end_time.isoformat() if session.end_time else None,
+        "duration_seconds": session.duration_seconds,
+        "timeline": timeline
     }

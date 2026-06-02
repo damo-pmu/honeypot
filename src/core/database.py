@@ -25,6 +25,8 @@ class AttackerDB(Base):
     ip = Column(String(45), primary_key=True)
     geoip = Column(JSON, nullable=True)
     asn = Column(String(50), nullable=True)
+    country = Column(String(2), nullable=True)  # ISO country code (e.g., 'US', 'FR')
+    threat_level = Column(String(20), default="unknown")  # low, medium, high, critical
     first_seen = Column(DateTime(timezone=True), default=datetime.utcnow)
     last_seen = Column(DateTime(timezone=True), default=datetime.utcnow)
     threat_score = Column(Integer, default=0)
@@ -60,6 +62,7 @@ class CommandDB(Base):
     command = Column(Text, nullable=False)
     timestamp = Column(DateTime(timezone=True), default=datetime.utcnow)
     flagged = Column(Boolean, default=False)
+    attacker_ip = Column(String(45), nullable=True)  # Denormalized for fast queries
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
 
 
@@ -74,6 +77,7 @@ class AttackDB(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     session_id = Column(String(100), ForeignKey("sessions.id", ondelete="CASCADE"), nullable=False)
     attacker_ip = Column(String(45), nullable=False)  # Denormalized for fast queries
+    protocol = Column(String(20), nullable=True)  # SSH, Telnet, HTTP, etc.
     timestamp = Column(DateTime(timezone=True), default=datetime.utcnow)
     attack_type = Column(String(50), nullable=True)  # SCAN, BRUTE_FORCE, MALWARE_DOWNLOAD, etc.
     payload = Column(Text, nullable=True)
