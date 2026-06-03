@@ -305,6 +305,43 @@ def emit_event_json(request: EventRequest):
     return {"status": "emitted"}
 
 
+@router.get("/api/events/history")
+def get_events_history(db: Session = Depends(get_db), limit: int = 50):
+    """Get recent attack events from DB for initial page load"""
+    from sqlalchemy import desc
+    attacks = db.query(AttackDB).order_by(desc(AttackDB.timestamp)).limit(limit).all()
+    commands = db.query(CommandDB).order_by(desc(CommandDB.timestamp)).limit(limit).all()
+    
+    events = []
+    for a in attacks:
+        events.append({
+            "type": "attack",
+            "timestamp": a.timestamp.isoformat(),
+            "data": {
+                "attack_type": a.attack_type,
+                "protocol": a.protocol,
+                "attacker_ip": a.attacker_ip,
+                "severity": a.severity,
+                "payload": a.payload[:200] if a.payload else None
+            }
+        })
+    
+    for c in commands:
+        events.append({
+            "type": "command",
+            "timestamp": c.timestamp.isoformat(),
+            "data": {
+                "command": c.command,
+                "attacker_ip": c.attacker_ip,
+                "flagged": c.flagged
+            }
+        })
+    
+    # Sort by timestamp
+    events.sort(key=lambda x: x["timestamp"], reverse=True)
+    return events
+
+
 @router.get("/debug/status")
 def debug_status():
     """Debug endpoint - system status for autonomous debugging"""

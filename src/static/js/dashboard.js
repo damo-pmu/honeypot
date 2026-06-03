@@ -18,11 +18,13 @@ function dashboardState() {
         map: null,
         filters: ['all', 'ssh_login', 'telnet', 'command', 'attack'],
         activeFilter: 'all',
+        selectedIP: null, // For persistent highlight
         
         // Initialize on load
         init() {
             this.loadInitialStats();  // Load from rendered HTML first
-            this.loadStats();        // Then fetch fresh data
+            this.loadStats();         // Then fetch fresh data
+            this.loadDBEvents();      // Load persisted DB events
             setTimeout(() => this.initMap(), 100);  // Wait for Tailwind styles
             this.initSSE();
             this.loadSessions();
@@ -50,6 +52,19 @@ function dashboardState() {
                 } catch (e) {
                     console.warn('Initial stats parse failed:', e);
                 }
+            }
+        },
+        
+        // Load events from DB (persisted across rebuilds)
+        async loadDBEvents() {
+            try {
+                const resp = await fetch('/dashboard/api/events/history');
+                const events = await resp.json();
+                events.forEach(e => {
+                    this.addEventToFeed(e);
+                });
+            } catch (e) {
+                console.warn('DB events load failed:', e);
             }
         },
         
@@ -114,11 +129,21 @@ function dashboardState() {
         focusOnIP(ip) {
             const m = this.markers[ip];
             if (m && m.marker) {
+                this.selectedIP = ip; // Persist selection
                 this.map.setView(m.latlng, 8);
                 m.marker.openPopup();
                 this.addMapGlow();
-                setTimeout(() => this.removeMapGlow(), 2000);
+                // Keep glow on selected IP
             }
+        },
+        
+        // Clear selection
+        clearSelection() {
+            this.selectedIP = null;
+            this.removeMapGlow();
+            document.querySelectorAll('.event-card').forEach(el => {
+                el.classList.remove('ring-2', 'ring-green-400');
+            });
         },
         
         // Highlight card by IP
@@ -247,13 +272,20 @@ function dashboardState() {
                 if (ip) this.focusOnIP(ip);
             });
             
-            // Mouseleave -> remove highlight
+            // Mouseleave -> remove highlight (only if not selected)
             div.addEventListener('mouseleave', () => {
-                this.removeMapGlow();
+                if (this.selectedIP !== (event.data?.attacker_ip || event.data?.ip)) {
+                    this.removeMapGlow();
+                }
             });
             
-            // Click handler for session inspection
-            div.addEventListener('click', () => {
+            // Click -> persist selection and focus
+            div.addEventListener('click', (e) => {
+                const ip = event.data?.attacker_ip || event.data?.ip;
+                if (ip) {
+                    this.selectedIP = ip;
+                    this.focusOnIP(ip);
+                }
                 if (event.data?.session_id) {
                     this.loadSessionDetail(event.data.session_id);
                 }
