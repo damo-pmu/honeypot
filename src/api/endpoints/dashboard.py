@@ -148,6 +148,15 @@ def get_session_timeline(session_id: str, db: Session = Depends(get_db)):
     return builder.get_story()
 
 
+@router.get("/api/replay/{session_id}")
+def get_session_replay(session_id: str, db: Session = Depends(get_db)):
+    """Get chronological session replay for investigation"""
+    from src.services.replay_service import ReplayService
+    
+    service = ReplayService(session_id, db)
+    return service.get_replay()
+
+
 @router.get("/api/map")
 def get_map_data(db: Session = Depends(get_db)):
     """Get geoip markers for map - already enriched in DB"""
