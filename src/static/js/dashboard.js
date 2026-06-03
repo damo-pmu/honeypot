@@ -16,7 +16,7 @@ function dashboardState() {
         evtSource: null,
         markers: {},
         map: null,
-        filters: ['all', 'ssh_login', 'telnet', 'command', 'attack'],
+        filters: ['all', 'ssh_attempt', 'telnet_login', 'command', 'attack'],
         activeFilter: 'all',
         selectedIP: null, // For persistent highlight
         
@@ -266,21 +266,8 @@ function dashboardState() {
                 </div>
             `;
             
-            // Mouseenter -> focus map on IP
-            div.addEventListener('mouseenter', () => {
-                const ip = event.data?.attacker_ip || event.data?.ip;
-                if (ip) this.focusOnIP(ip);
-            });
-            
-            // Mouseleave -> remove highlight (only if not selected)
-            div.addEventListener('mouseleave', () => {
-                if (this.selectedIP !== (event.data?.attacker_ip || event.data?.ip)) {
-                    this.removeMapGlow();
-                }
-            });
-            
-            // Click -> persist selection and focus
-            div.addEventListener('click', (e) => {
+            // Click -> focus map + persist selection + glow
+            div.addEventListener('click', () => {
                 const ip = event.data?.attacker_ip || event.data?.ip;
                 if (ip) {
                     this.selectedIP = ip;
@@ -294,9 +281,20 @@ function dashboardState() {
             eventsDiv.prepend(div);
         },
         
+        // Apply filter to visible events
+        applyFilter() {
+            document.querySelectorAll('.event-card').forEach(el => {
+                const ip = el.dataset.ip;
+                // Show/hide based on filter
+                el.style.display = this.activeFilter === 'all' || 
+                    el.querySelector('.event-type')?.textContent === this.activeFilter ? '' : 'none';
+            });
+        },
+        
         // Filter handling
         setFilter(filter) {
             this.activeFilter = filter;
+            this.applyFilter();
         },
         
         // Session investigation

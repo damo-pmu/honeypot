@@ -76,7 +76,7 @@ def trigger_decoy_response(session_id: str, attacker_ip: str, threat_class: str,
     """Trigger decoy response based on threat classification"""
     send_to_api("/dashboard/emit", {
         "event_type": "threat_class",
-        "data": {"session_id": session_id, "ip": attacker_ip, "threat_class": threat_class, "count": interaction_count}
+        "data": {"session_id": session_id, "attacker_ip": attacker_ip, "threat_class": threat_class, "count": interaction_count}
     })
 
 
@@ -156,7 +156,7 @@ def process_event(line: str):
         
         send_to_api("/dashboard/emit", {
             "event_type": "command",
-            "data": {"session_id": session_id, "ip": src_ip, "command": command[:100]}
+            "data": {"session_id": session_id, "attacker_ip": src_ip, "command": command[:100]}
         })
         
         process_command_with_ioc(command, session_id, src_ip)
@@ -196,7 +196,7 @@ def process_event(line: str):
     elif "session.closed" in event_id:
         send_to_api("/dashboard/emit", {
             "event_type": "session_end",
-            "data": {"session_id": session_id}
+            "data": {"session_id": session_id, "attacker_ip": src_ip}
         })
 
 
