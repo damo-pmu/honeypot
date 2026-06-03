@@ -132,6 +132,22 @@ def get_session_detail(session_id: str, db: Session = Depends(get_db)):
     return result
 
 
+@router.get("/api/timeline/{session_id}")
+def get_session_timeline(session_id: str, db: Session = Depends(get_db)):
+    """Get structured attack timeline for investigation"""
+    from src.repositories.attack_repository import AttackRepository
+    from src.services.timeline_builder import TimelineBuilder
+    
+    repo = AttackRepository(db)
+    events = repo.get_by_session(session_id)
+    
+    if not events:
+        return {"timeline": [], "story": "No events found"}
+    
+    builder = TimelineBuilder(session_id, events)
+    return builder.get_story()
+
+
 @router.get("/api/map")
 def get_map_data(db: Session = Depends(get_db)):
     """Get geoip markers for map - already enriched in DB"""
