@@ -82,13 +82,19 @@ def add_event(event_type: str, data: dict) -> None:
             del _event_counts[old["type"]]
 
 
-def get_stats() -> dict:
+def get_stats(db: Optional[Session] = None) -> dict:
     """Get current dashboard statistics"""
+    # Active honeypot sessions (not dashboard auth sessions)
+    active_honeypot_sessions = 0
+    if db:
+        from src.core.database import SessionDB
+        active_honeypot_sessions = db.query(SessionDB).filter(SessionDB.end_time.is_(None)).count()
+    
     return {
         "total_events": len(_dashboard_events),
         "attacks_24h": sum(_event_counts.values()),
         "unique_ips_24h": len(set(e.get("data", {}).get("attacker_ip") for e in _dashboard_events[-100:] if e.get("data", {}).get("attacker_ip"))),
-        "active_sessions": len(_sessions)
+        "active_sessions": active_honeypot_sessions
     }
 
 
@@ -96,15 +102,15 @@ def get_stats() -> dict:
 # UI Routes (templated)
 # ============================================================
 @router.get("/")
-def dashboard_home(request: Request):
+def dashboard_home(request: Request, db: Session = Depends(get_db)):
     """Serve dashboard HTML via Jinja2 template - redirect to login if no session"""
     if get_session(request):
-        return render_template("dashboard.html", {"request": request, "stats": get_stats()})
+        return render_template("dashboard.html", {"request": request, "stats": get_stats(db)})
     return render_template("login.html", {"request": request, "error": None})
 
 
 @router.post("/login")
-async def login(request: Request, response: Response):
+async def login(request: Request, response: Response, db: Session = Depends(get_db)):
     """Login with password form - returns dashboard HTML with session cookie"""
     form = await request.form()
     password = form.get("password", "")
@@ -116,7 +122,7 @@ async def login(request: Request, response: Response):
         
         return render_template(
             "dashboard.html",
-            {"request": request, "stats": get_stats()},
+            {"request": request, "stats": get_stats(db)},
             headers={"Set-Cookie": f"dash_session={session}; HttpOnly; Path=/; SameSite=strict"}
         )
     
@@ -150,12 +156,15 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
     service = DashboardService(db)
     db_stats = service.get_live_stats()
     
+    # Active honeypot sessions
+    active_honeypot_sessions = db.query(SessionDB).filter(SessionDB.end_time.is_(None)).count()
+    
     # Merge with in-memory event counts for frontend format
     return {
         "total_events": len(_dashboard_events),
         "attacks_24h": sum(_event_counts.values()),
         "unique_ips_24h": len(set(e.get("data", {}).get("attacker_ip") for e in _dashboard_events[-100:] if e.get("data", {}).get("attacker_ip"))),
-        "active_sessions": len(_sessions),
+        "active_sessions": active_honeypot_sessions,
         **db_stats
     }
 
