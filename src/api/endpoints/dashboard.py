@@ -175,6 +175,56 @@ def get_mitre_mapping(session_id: str, db: Session = Depends(get_db)):
     return {"mappings": all_mappings, "session_id": session_id}
 
 
+@router.get("/api/iocs")
+def get_all_iocs(
+    db: Session = Depends(get_db),
+    limit: int = 100,
+    ioc_type: Optional[str] = None
+):
+    """Get extracted IOCs - optionally filtered by type"""
+    from src.core.database import IOCDb
+    
+    query = db.query(IOCDb)
+    if ioc_type:
+        query = query.filter(IOCDb.ioc_type == ioc_type)
+    
+    iocs = query.order_by(IOCDb.first_seen.desc()).limit(limit).all()
+    
+    return {
+        "items": [
+            {
+                "id": i.id,
+                "ioc_type": i.ioc_type,
+                "value": i.value,
+                "confidence": i.confidence,
+                "source": i.source,
+                "first_seen": i.first_seen.isoformat() if i.first_seen else None
+            }
+            for i in iocs
+        ],
+        "count": len(iocs)
+    }
+
+
+@router.post("/api/iocs/extract/{session_id}")
+def extract_iocs_session(session_id: str, db: Session = Depends(get_db)):
+    """Extract IOCs from session events on-demand"""
+    from src.repositories.attack_repository import AttackRepository
+    from src.services.ioc_extractor import IOCService
+    
+    repo = AttackRepository(db)
+    events = repo.get_by_session(session_id)
+    
+    service = IOCService(db)
+    iocs = service.extract_from_session(session_id, events)
+    
+    return {
+        "iocs": [{"value": i.value, "type": i.ioc_type, "context": i.context} for i in iocs],
+        "session_id": session_id,
+        "count": len(iocs)
+    }
+
+
 @router.get("/api/map")
 def get_map_data(db: Session = Depends(get_db)):
     """Get geoip markers for map - already enriched in DB"""
