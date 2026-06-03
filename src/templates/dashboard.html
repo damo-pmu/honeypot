@@ -46,7 +46,7 @@
 <body class="bg-soc-bg text-gray-200 min-h-screen" 
       x-data="dashboardState()" 
       x-init="init()"
-      data-initial-stats="{{ stats | tojson | safe }}">
+      data-initial-stats="{{ (stats or {}) | tojson | safe }}">
     
     {# Navigation Bar #}
     <nav class="border-b border-soc-border bg-soc-bg/80 backdrop-blur-sm sticky top-0 z-50">

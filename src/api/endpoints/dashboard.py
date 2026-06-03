@@ -48,7 +48,9 @@ router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 def dashboard_home(request: Request, db: Session = Depends(get_db)):
     """Serve dashboard HTML - initial load fetches all data via API"""
     if get_session(request):
-        return render_template("dashboard.html", {"request": request})
+        service = StatisticsService(db)
+        stats = service.get_dashboard_stats()
+        return render_template("dashboard.html", {"request": request, "stats": stats})
     return render_template("login.html", {"request": request, "error": None})
 
 
@@ -63,9 +65,13 @@ async def login(request: Request, response: Response, db: Session = Depends(get_
         session = create_session(response)
         log_auth_event("login", True, client_ip, {"method": "form"})
         
+        # Get stats for initial render
+        service = StatisticsService(db)
+        stats = service.get_dashboard_stats()
+        
         return render_template(
             "dashboard.html",
-            {"request": request},
+            {"request": request, "stats": stats},
             headers={"Set-Cookie": f"dash_session={session}; HttpOnly; Path=/; SameSite=strict"}
         )
     
