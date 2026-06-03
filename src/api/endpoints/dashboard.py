@@ -1,9 +1,8 @@
 """Dashboard endpoints - Refactored for SOC architecture with DB as single source of truth"""
-import os
 import json
 import asyncio
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional
 from fastapi import APIRouter, HTTPException, Depends, Request, Response
 from fastapi.responses import HTMLResponse, StreamingResponse, RedirectResponse
 from sqlalchemy.orm import Session
