@@ -38,7 +38,7 @@ def scan_for_iocs(text: str) -> dict:
     
     hash_patterns = re.compile(r'\b[a-fA-F0-9]{32}\b|\b[a-fA-F0-9]{40}\b|\b[a-fA-F0-9]{64}\b')
     ip_patterns = re.compile(r'\b(?:\d{1,3}\.){3}\d{1,3}\b')
-    url_patterns = re.compile(r'https?://[^\s<>"{}|\\^`\[\]]+')
+    url_patterns = re.compile(r'https?://[^\s<>\"{}|\\^`\[\]]+')
     
     return {
         "hashes": list(set(hash_patterns.findall(text))),
@@ -70,14 +70,6 @@ def get_severity(command: str) -> int:
     if any(x in cmd for x in ["nmap", "masscan", "nikto"]):
         return 60
     return 30
-
-
-def trigger_decoy_response(session_id: str, attacker_ip: str, threat_class: str, interaction_count: int):
-    """Trigger decoy response based on threat classification"""
-    send_to_api("/dashboard/emit", {
-        "event_type": "threat_class",
-        "data": {"session_id": session_id, "attacker_ip": attacker_ip, "threat_class": threat_class, "count": interaction_count}
-    })
 
 
 def process_command_with_ioc(command: str, session_id: str, src_ip: str):
@@ -126,16 +118,17 @@ def process_event(line: str):
         password = event.get("password", "")
         
         send_to_api("/attackers", {"ip": src_ip})
-        send_to_api("/sessions", {
-            "id": session_id,
+        send_to_api("/internal/sessions", {
+            "session_id": session_id,
             "attacker_ip": src_ip,
             "protocol": "SSH"
         })
         
-        # Log attack event
-        send_to_api("/attacks/log", {
+        # Log attack event to NEW internal endpoint
+        send_to_api("/internal/events", {
             "session_id": session_id,
             "attacker_ip": src_ip,
+            "protocol": "SSH",
             "attack_type": "BRUTE_FORCE",
             "payload": f"{username}:{password}",
             "severity": 70 if password else 50
@@ -149,37 +142,34 @@ def process_event(line: str):
         session_commands[session_id].append(command)
         interaction_count = len(session_commands[session_id])
         
+        # Log command (existing endpoint)
         send_to_api("/commands", {
             "session_id": session_id,
             "command": command
         })
         
-        send_to_api("/dashboard/emit", {
-            "event_type": "command",
-            "data": {"session_id": session_id, "attacker_ip": src_ip, "command": command[:100]}
-        })
-        
         process_command_with_ioc(command, session_id, src_ip)
         
-        # Log attack with severity
-        send_to_api("/attacks/log", {
+        # Log attack to NEW internal endpoint
+        send_to_api("/internal/events", {
             "session_id": session_id,
             "attacker_ip": src_ip,
+            "protocol": "SSH",
             "attack_type": "COMMAND_EXECUTION",
             "payload": command[:500],
             "severity": get_severity(command)
         })
         
         threat_class = get_threat_class(session_commands[session_id])
-        trigger_decoy_response(session_id, src_ip, threat_class, interaction_count)
-    
+        
     elif "download" in event_id:
         url = event.get("url", "")
         if url:
             process_command_with_ioc(url, "download", src_ip)
-            send_to_api("/attacks/log", {
+            send_to_api("/internal/events", {
                 "session_id": session_id,
                 "attacker_ip": src_ip,
+                "protocol": "SSH",
                 "attack_type": "MALWARE_DOWNLOAD",
                 "payload": url,
                 "severity": 95
@@ -187,17 +177,15 @@ def process_event(line: str):
     
     elif "session.connect" in event_id:
         send_to_api("/attackers", {"ip": src_ip})
-        send_to_api("/sessions", {
-            "id": session_id,
+        send_to_api("/internal/sessions", {
+            "session_id": session_id,
             "attacker_ip": src_ip,
             "protocol": "SSH"
         })
     
     elif "session.closed" in event_id:
-        send_to_api("/dashboard/emit", {
-            "event_type": "session_end",
-            "data": {"session_id": session_id, "attacker_ip": src_ip}
-        })
+        # End session via internal endpoint
+        requests.post(f"{API_URL}/internal/sessions/{session_id}/end")
 
 
 def ingest_logs():

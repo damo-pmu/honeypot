@@ -58,14 +58,31 @@ function dashboardState() {
         // Load events from DB (persisted across rebuilds)
         async loadDBEvents() {
             try {
-                const resp = await fetch('/dashboard/api/events/history');
-                const events = await resp.json();
-                events.forEach(e => {
-                    this.addEventToFeed(e);
-                });
+                const resp = await fetch('/dashboard/api/live-feed?limit=50');
+                const { items } = await resp.json();
+                this.events = items || [];
             } catch (e) {
                 console.warn('DB events load failed:', e);
             }
+        },
+        
+        // Load live feed - called by SSE notifications
+        async loadLiveFeed() {
+            try {
+                const resp = await fetch('/dashboard/api/live-feed?limit=50');
+                const { items } = await resp.json();
+                this.events = items || [];
+                this.renderAllEvents();
+            } catch (e) {
+                console.warn('Live feed load failed:', e);
+            }
+        },
+        
+        // Render all events to DOM
+        renderAllEvents() {
+            const eventsDiv = document.getElementById('events');
+            eventsDiv.innerHTML = '';
+            this.events.forEach(e => this.renderEventCard(e));
         },
         
         // Leaflet map initialization - called after DOM is ready
@@ -99,21 +116,20 @@ function dashboardState() {
             if (this.markers[ip]) return;
             
             try {
-                // Use proxy endpoint to avoid CORS issues
-                const resp = await fetch(`/dashboard/api/geolocate/${ip}`);
-                const data = await resp.json();
+                // Use the map endpoint which has pre-enriched geoip data
+                const resp = await fetch('/dashboard/api/map');
+                const markers = await resp.json();
                 
-                if (data.error || !data.lat) {
-                    console.warn('Geolocation failed for:', ip, data.error);
+                const data = markers.find(m => m.ip === ip);
+                if (!data || !data.lat) {
                     return;
                 }
                 
                 const latlng = [data.lat, data.lon];
-                const popupContent = `<b>${ip}</b><br>${data.city || ''}, ${data.country || ''}`;
+                const popupContent = `<b>${ip}</b><br>${data.country || ''}`;
                 const marker = L.marker(latlng).addTo(this.map)
                     .bindPopup(popupContent);
                 
-                // Click marker -> highlight card
                 marker.on('click', () => {
                     this.highlightCardByIP(ip);
                     this.addMapGlow();
@@ -186,11 +202,23 @@ function dashboardState() {
                 
                 this.evtSource.onmessage = (e) => {
                     const event = JSON.parse(e.data);
-                    this.addEventToFeed(event);
+                    
+                    // SSE sends ONLY notifications - frontend must fetch data
+                    if (event.type === 'connected') {
+                        this.connected = true;
+                        return;
+                    }
+                    
+                    if (event.type === 'attack_created') {
+                        this.loadLiveFeed();
+                        this.loadStats();
+                    } else if (event.type === 'session_created') {
+                        this.loadSessions();
+                        this.loadStats();
+                    }
                 };
                 
                 this.evtSource.onerror = (e) => {
-                    // SSE failed (Cloudflare timeout) - switch to polling
                     this.connected = false;
                     this.evtSource.close();
                     console.warn('SSE failed, switching to polling:', e);

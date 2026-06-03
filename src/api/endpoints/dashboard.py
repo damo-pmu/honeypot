@@ -1,101 +1,45 @@
-"""Dashboard endpoints - Refactored for SOC template architecture
-Clean separation: Python routes <<>> Jinja2 templates <<>> Alpine.js/HTMX frontend
-"""
+"""Dashboard endpoints - Refactored for SOC architecture with DB as single source of truth"""
 import os
-import asyncio
 import json
-from datetime import datetime, timedelta
+import asyncio
+from datetime import datetime
 from typing import Optional, List
-from fastapi import APIRouter, HTTPException, Depends, Request, Response, Body
+from fastapi import APIRouter, HTTPException, Depends, Request, Response
 from fastapi.responses import HTMLResponse, StreamingResponse, RedirectResponse
-from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from sqlalchemy import func
-from collections import Counter
+from pydantic import BaseModel
 
-# Templates setup - use Jinja2 env directly to avoid Starlette cache issues
+# Templates setup
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 jinja_env = Environment(
     loader=FileSystemLoader("/app/src/templates"),
     autoescape=select_autoescape(["html", "xml"]),
-    # remove enable_async - use sync render in FastAPI async context
 )
-# Disable bytecode cache to avoid unhashable dict errors
 jinja_env.bytecode_cache = None
 
-# Helper function to render template directly
+
 def render_template(template_name: str, context: dict, status_code: int = 200, headers: dict = None) -> HTMLResponse:
     """Render Jinja2 template directly without cache issues."""
     tmpl = jinja_env.get_template(template_name)
     html = tmpl.render(**context)
     return HTMLResponse(html, status_code=status_code, headers=headers)
 
+
 # Session auth
 from src.api.middleware.session import (
-    create_session, get_session, clear_session, require_auth,
-    DASHBOARD_PASSWORD, _sessions
+    create_session, get_session, clear_session, DASHBOARD_PASSWORD
 )
+from src.utils.audit_logger import log_auth_event
 
 # Database
-from src.core.database import get_db, SessionDB, AttackDB, CommandDB, AttackerDB
+from src.core.database import get_db, AttackDB
 
 # Services
-from src.services.dashboard import DashboardService, DashboardRepository
-from src.utils.audit_logger import log_auth_event, log_dashboard_event
+from src.services.statistics_service import StatisticsService
+from src.services.event_bus import event_bus, Event
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
-
-# In-memory event store (use Redis in production)
-_dashboard_events: List[dict] = []
-_event_counts: Counter = Counter()  # Track attack types
-
-
-# ============================================================
-# Event Broadcasting
-# ============================================================
-def add_event(event_type: str, data: dict) -> None:
-    """Add event to dashboard stream for SSE broadcasting"""
-    from src.infrastructure.observability.metrics import attacks_total, sessions_active
-    
-    event = {
-        "type": event_type,
-        "data": data,
-        "timestamp": datetime.utcnow().isoformat()
-    }
-    _dashboard_events.append(event)
-    _event_counts[event_type] += 1
-    
-    # Prometheus metrics
-    protocol = data.get("protocol", "unknown")
-    severity = data.get("severity", "medium")
-    attacks_total.labels(protocol=protocol, type=event_type, severity=severity).inc()
-    
-    if "session_id" in data:
-        sessions_active.inc()
-    
-    # Keep last 100 events
-    if len(_dashboard_events) > 100:
-        old = _dashboard_events.pop(0)
-        _event_counts[old["type"]] -= 1
-        if _event_counts[old["type"]] <= 0:
-            del _event_counts[old["type"]]
-
-
-def get_stats(db: Optional[Session] = None) -> dict:
-    """Get current dashboard statistics"""
-    # Active honeypot sessions (not dashboard auth sessions)
-    active_honeypot_sessions = 0
-    if db:
-        from src.core.database import SessionDB
-        active_honeypot_sessions = db.query(SessionDB).filter(SessionDB.end_time.is_(None)).count()
-    
-    return {
-        "total_events": len(_dashboard_events),
-        "attacks_24h": sum(_event_counts.values()),
-        "unique_ips_24h": len(set(e.get("data", {}).get("attacker_ip") for e in _dashboard_events[-100:] if e.get("data", {}).get("attacker_ip"))),
-        "active_sessions": active_honeypot_sessions
-    }
 
 
 # ============================================================
@@ -103,15 +47,15 @@ def get_stats(db: Optional[Session] = None) -> dict:
 # ============================================================
 @router.get("/")
 def dashboard_home(request: Request, db: Session = Depends(get_db)):
-    """Serve dashboard HTML via Jinja2 template - redirect to login if no session"""
+    """Serve dashboard HTML - initial load fetches all data via API"""
     if get_session(request):
-        return render_template("dashboard.html", {"request": request, "stats": get_stats(db)})
+        return render_template("dashboard.html", {"request": request})
     return render_template("login.html", {"request": request, "error": None})
 
 
 @router.post("/login")
 async def login(request: Request, response: Response, db: Session = Depends(get_db)):
-    """Login with password form - returns dashboard HTML with session cookie"""
+    """Login with password form"""
     form = await request.form()
     password = form.get("password", "")
     client_ip = request.client.host if request.client else "unknown"
@@ -122,7 +66,7 @@ async def login(request: Request, response: Response, db: Session = Depends(get_
         
         return render_template(
             "dashboard.html",
-            {"request": request, "stats": get_stats(db)},
+            {"request": request},
             headers={"Set-Cookie": f"dash_session={session}; HttpOnly; Path=/; SameSite=strict"}
         )
     
@@ -148,183 +92,76 @@ def logout(request: Request, response: Response):
 
 
 # ============================================================
-# API Routes (JSON)
+# API Routes (JSON) - All data from PostgreSQL
 # ============================================================
-@router.get("/stats")
+@router.get("/api/stats")
 def get_dashboard_stats(db: Session = Depends(get_db)):
-    """Get dashboard statistics - combines Prometheus + DB data"""
-    service = DashboardService(db)
-    db_stats = service.get_live_stats()
-    
-    # Active honeypot sessions
-    active_honeypot_sessions = db.query(SessionDB).filter(SessionDB.end_time.is_(None)).count()
-    
-    # Merge with in-memory event counts for frontend format
-    return {
-        "total_events": len(_dashboard_events),
-        "attacks_24h": sum(_event_counts.values()),
-        "unique_ips_24h": len(set(e.get("data", {}).get("attacker_ip") for e in _dashboard_events[-100:] if e.get("data", {}).get("attacker_ip"))),
-        "active_sessions": active_honeypot_sessions,
-        **db_stats
-    }
+    """Get dashboard statistics - SINGLE SOURCE OF TRUTH: PostgreSQL"""
+    service = StatisticsService(db)
+    return service.get_dashboard_stats()
+
+
+@router.get("/api/live-feed")
+def get_live_feed(db: Session = Depends(get_db), limit: int = 50):
+    """Get recent events for live feed - from DB, ordered by timestamp desc"""
+    service = StatisticsService(db)
+    return {"items": service.get_live_feed(limit=limit)}
 
 
 @router.get("/api/sessions")
 def get_sessions(
-    request: Request,
     db: Session = Depends(get_db),
     protocol: Optional[str] = None,
     ip: Optional[str] = None,
     limit: int = 50,
     offset: int = 0
 ):
-    """Get sessions list with optional filtering - HTMX compatible partial rendering"""
-    query = db.query(SessionDB)
-    
-    if protocol:
-        query = query.filter(SessionDB.protocol == protocol)
-    if ip:
-        query = query.filter(SessionDB.attacker_ip == ip)
-    
-    sessions = query.order_by(SessionDB.start_time.desc()).limit(limit).offset(offset).all()
-    
-    return [
-        {
-            "id": s.id,
-            "attacker_ip": s.attacker_ip,
-            "protocol": s.protocol,
-            "start_time": s.start_time.isoformat() if s.start_time else None,
-            "end_time": s.end_time.isoformat() if s.end_time else None,
-            "duration_seconds": s.duration_seconds,
-            "interaction_count": s.interaction_count
-        }
-        for s in sessions
-    ]
+    """Get sessions list with optional filtering"""
+    from src.repositories.session_repository import SessionRepository
+    repo = SessionRepository(db)
+    return repo.get_list(protocol=protocol, ip=ip, limit=limit, offset=offset)
 
 
 @router.get("/api/sessions/{session_id}")
 def get_session_detail(session_id: str, db: Session = Depends(get_db)):
     """Get full session aggregation for investigation panel"""
-    session = db.query(SessionDB).filter(SessionDB.id == session_id).first()
-    if not session:
+    from src.repositories.session_repository import SessionRepository
+    repo = SessionRepository(db)
+    result = repo.get_full_detail(session_id)
+    if not result:
         raise HTTPException(status_code=404, detail="Session not found")
-    
-    # Get attacker info
-    attacker = db.query(AttackerDB).filter(AttackerDB.ip == session.attacker_ip).first()
-    
-    # Get attacks
-    attacks = db.query(AttackDB).filter(
-        AttackDB.session_id == session_id
-    ).order_by(AttackDB.timestamp).all()
-    
-    # Get commands
-    commands = db.query(CommandDB).filter(
-        CommandDB.session_id == session_id
-    ).order_by(CommandDB.timestamp).all()
-    
-    # Build timeline
-    timeline = []
-    for a in attacks:
-        timeline.append({
-            "type": "attack",
-            "timestamp": a.timestamp.isoformat(),
-            "data": {
-                "attack_type": a.attack_type,
-                "protocol": a.protocol,
-                "severity": a.severity,
-                "attacker_ip": a.attacker_ip
-            }
-        })
-    for c in commands:
-        timeline.append({
-            "type": "command",
-            "timestamp": c.timestamp.isoformat(),
-            "data": {
-                "command": c.command,
-                "is_flagged": c.flagged,
-                "attacker_ip": c.attacker_ip
-            }
-        })
-    
-    timeline.sort(key=lambda x: x["timestamp"])
-    
-    return {
-        "id": session.id,
-        "attacker_ip": session.attacker_ip,
-        "protocol": session.protocol,
-        "start_time": session.start_time.isoformat() if session.start_time else None,
-        "end_time": session.end_time.isoformat() if session.end_time else None,
-        "duration_seconds": session.duration_seconds,
-        "geoip": attacker.geoip if attacker else None,
-        "threat_score": attacker.threat_score if attacker else 0,
-        "commands": [
-            {"command": c.command, "flagged": c.flagged, "timestamp": c.timestamp.isoformat()}
-            for c in commands
-        ],
-        "attacks": [
-            {"attack_type": a.attack_type, "severity": a.severity, "payload": a.payload}
-            for a in attacks
-        ],
-        "timeline": timeline
-    }
+    return result
 
 
-@router.get("/stream")
-async def stream(request: Request, session: Optional[str] = Depends(get_session)):
-    """Server-sent events stream - optional auth for public demo mode"""
-    
-    async def event_generator():
-        # Send existing events
-        for event in _dashboard_events[-20:]:
-            yield f"data: {json.dumps(event)}\n\n"
-        
-        # Stream new events
-        last_id = len(_dashboard_events)
-        while True:
-            if await request.is_disconnected():
-                break
-            
-            while last_id < len(_dashboard_events):
-                yield f"data: {json.dumps(_dashboard_events[last_id])}\n\n"
-                last_id += 1
-            
-            await asyncio.sleep(0.5)
-    
-    return StreamingResponse(event_generator(), media_type="text/event-stream")
-
-
-@router.get("/events/recent")
-def get_recent_events(limit: int = 20):
-    """Get recent events - for polling fallback (public for auto-refresh)"""
-    return _dashboard_events[-limit:]
-
-
-# ============================================================
-# Internal API (no auth)
-# ============================================================
-class EventRequest(BaseModel):
-    event_type: str
-    data: dict
-
-
-@router.post("/emit")
-def emit_event_json(request: EventRequest):
-    """Emit event via JSON body (no auth for internal worker)"""
-    add_event(request.event_type, request.data)
-    return {"status": "emitted"}
+@router.get("/api/map")
+def get_map_data(db: Session = Depends(get_db)):
+    """Get geoip markers for map - already enriched in DB"""
+    service = StatisticsService(db)
+    return service.get_geoip_markers(limit=100)
 
 
 @router.get("/api/events/history")
-def get_events_history(db: Session = Depends(get_db), limit: int = 50):
-    """Get recent attack events from DB for initial page load"""
-    from sqlalchemy import desc
-    attacks = db.query(AttackDB).order_by(desc(AttackDB.timestamp)).limit(limit).all()
-    commands = db.query(CommandDB).order_by(desc(CommandDB.timestamp)).limit(limit).all()
+def get_events_history(
+    db: Session = Depends(get_db), 
+    limit: int = 50,
+    offset: int = 0,
+    event_type: Optional[str] = None,
+    hours: int = 24
+):
+    """Get paginated event history - separate from live feed"""
+    from src.repositories.attack_repository import AttackRepository
+    repo = AttackRepository(db)
+    
+    # Get attacks with limit/offset
+    attacks = db.query(AttackDB).order_by(
+        AttackDB.timestamp.desc()
+    ).offset(offset).limit(limit).all()
     
     events = []
     for a in attacks:
         events.append({
             "type": "attack",
+            "id": a.id,
             "timestamp": a.timestamp.isoformat(),
             "data": {
                 "attack_type": a.attack_type,
@@ -335,50 +172,135 @@ def get_events_history(db: Session = Depends(get_db), limit: int = 50):
             }
         })
     
-    for c in commands:
-        events.append({
-            "type": "command",
-            "timestamp": c.timestamp.isoformat(),
-            "data": {
-                "command": c.command,
-                "attacker_ip": c.attacker_ip,
-                "flagged": c.flagged
-            }
-        })
+    return {"items": events, "count": len(events)}
+
+
+# ============================================================
+# SSE - NOTIFICATIONS ONLY (no data payloads)
+# ============================================================
+# Async queue for SSE distribution
+_sse_queue = None
+
+
+@router.get("/stream")
+async def stream(request: Request, session: Optional[str] = Depends(get_session)):
+    """
+    Server-sent events stream - sends ONLY notifications.
     
-    # Sort by timestamp
-    events.sort(key=lambda x: x["timestamp"], reverse=True)
-    return events
-
-
-@router.get("/debug/status")
-def debug_status():
-    """Debug endpoint - system status for autonomous debugging"""
-    return {
-        "events_pending": len(_dashboard_events),
-        "event_types": dict(_event_counts),
-        "sessions_active": len(_sessions),
-        "memory_usage": "ok"
-    }
-
-
-@router.get("/api/geolocate/{ip}")
-async def geolocate_ip(ip: str):
-    """Proxy geolocate IP to avoid CORS issues from browser"""
-    import httpx
-    try:
-        async with httpx.AsyncClient() as client:
-            resp = await client.get(f"http://ip-api.com/json/{ip}", timeout=5.0)
-            data = resp.json()
+    Frontend must call specific APIs on notification:
+    - attack_created → loadLiveFeed(), loadStats()
+    - session_created → loadSessions(), loadStats()
+    """
+    global _sse_queue
+    if _sse_queue is None:
+        import asyncio
+        _sse_queue = asyncio.Queue()
+        event_bus.set_queue(_sse_queue)
+    
+    async def event_generator():
+        # Send initial connection established
+        yield f'data: {json.dumps({"type": "connected", "timestamp": datetime.utcnow().isoformat()})}\n\n'
+        
+        # Stream events from queue
+        while True:
+            if await request.is_disconnected():
+                break
             
-            if data.get("status") == "success":
-                return {
-                    "lat": data.get("lat"),
-                    "lon": data.get("lon"),
-                    "city": data.get("city", ""),
-                    "country": data.get("country", ""),
-                    "ip": ip
-                }
-            return {"error": "No location data"}
-    except Exception as e:
-        return {"error": str(e)}
+            try:
+                # Non-blocking wait with timeout for connection check
+                event = await _sse_queue.get()
+                yield f'data: {json.dumps({"type": event.type, "event_id": event.event_id, "timestamp": event.timestamp, "reference_id": event.reference_id, "session_id": event.session_id})}\n\n'
+            except Exception:
+                await asyncio.sleep(0.5)
+            
+            await asyncio.sleep(0.1)
+    
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
+# ============================================================
+# Internal API (no auth) - for worker ingestion
+# ============================================================
+class EventRequest(BaseModel):
+    session_id: str
+    attacker_ip: str
+    protocol: str
+    attack_type: str
+    payload: Optional[str] = None
+    severity: int = 0
+
+
+@router.post("/internal/events")
+def ingest_attack_event(request: EventRequest, db: Session = Depends(get_db)):
+    """
+    Ingest attack event from worker - stores to DB then publishes notification.
+    Called by cowrie_ingest worker.
+    """
+    from src.repositories.attack_repository import AttackRepository
+    
+    # Store in DB (single source of truth)
+    repo = AttackRepository(db)
+    attack = repo.create(
+        session_id=request.session_id,
+        attacker_ip=request.attacker_ip,
+        protocol=request.protocol,
+        attack_type=request.attack_type,
+        payload=request.payload,
+        severity=request.severity
+    )
+    
+    # Publish notification via event bus
+    event_bus.publish(
+        event_type="attack_created",
+        reference_id=str(attack.id),
+        session_id=request.session_id
+    )
+    
+    return {"status": "stored", "attack_id": attack.id}
+
+
+class SessionEventRequest(BaseModel):
+    session_id: str
+    attacker_ip: str
+    protocol: str
+
+
+@router.post("/internal/sessions")
+def upsert_session(request: SessionEventRequest, db: Session = Depends(get_db)):
+    """Create or update session - called by worker on session start"""
+    from src.repositories.session_repository import SessionRepository
+    
+    repo = SessionRepository(db)
+    existing = repo.get_by_id(request.session_id)
+    
+    if existing:
+        return {"status": "exists", "session_id": request.session_id}
+    
+    session = repo.create(
+        session_id=request.session_id,
+        attacker_ip=request.attacker_ip,
+        protocol=request.protocol
+    )
+    
+    event_bus.publish(
+        event_type="session_created",
+        session_id=request.session_id
+    )
+    
+    return {"status": "created", "session_id": session.id}
+
+
+@router.post("/internal/sessions/{session_id}/end")
+def end_session(session_id: str, db: Session = Depends(get_db)):
+    """Mark session as ended - called by worker on disconnect"""
+    from src.repositories.session_repository import SessionRepository
+    
+    repo = SessionRepository(db)
+    repo.update_end(session_id)
+    
+    event_bus.publish(
+        event_type="session_ended",
+        session_id=session_id
+    )
+    
+    return {"status": "ended", "session_id": session_id}
