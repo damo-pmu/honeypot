@@ -225,6 +225,62 @@ def extract_iocs_session(session_id: str, db: Session = Depends(get_db)):
     }
 
 
+@router.get("/api/payloads")
+def get_payloads(
+    db: Session = Depends(get_db),
+    limit: int = 50,
+    suspicious_only: bool = False
+):
+    """Get analyzed payloads - from DB records"""
+    from src.core.database import PayloadDB
+    
+    query = db.query(PayloadDB)
+    if suspicious_only:
+        query = query.filter(PayloadDB.packed == True)
+    
+    payloads = query.order_by(PayloadDB.first_seen.desc()).limit(limit).all()
+    
+    return {
+        "items": [
+            {
+                "id": p.id,
+                "sha256": p.sha256,
+                "md5": p.md5,
+                "size": p.size,
+                "entropy": p.entropy,
+                "file_type": p.file_type,
+                "suspicious": p.suspicious,
+                "packed": p.packed,
+                "first_seen": p.first_seen.isoformat() if p.first_seen else None
+            }
+            for p in payloads
+        ],
+        "count": len(payloads)
+    }
+
+
+@router.get("/api/payloads/{sha256}")
+def get_payload_detail(sha256: str, db: Session = Depends(get_db)):
+    """Get specific payload analysis"""
+    from src.core.database import PayloadDB
+    
+    payload = db.query(PayloadDB).filter(PayloadDB.sha256 == sha256).first()
+    if not payload:
+        raise HTTPException(status_code=404, detail="Payload not found")
+    
+    return {
+        "sha256": payload.sha256,
+        "md5": payload.md5,
+        "size": payload.size,
+        "entropy": payload.entropy,
+        "file_type": payload.file_type,
+        "strings": payload.strings,
+        "suspicious": payload.suspicious,
+        "packed": payload.packed,
+        "analysis": payload.analysis
+    }
+
+
 @router.get("/api/map")
 def get_map_data(db: Session = Depends(get_db)):
     """Get geoip markers for map - already enriched in DB"""

@@ -110,6 +110,28 @@ class IOCSessionLink(Base):
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
 
 
+class PayloadDB(Base):
+    __tablename__ = "payloads"
+    __table_args__ = (
+        Index('idx_payloads_sha256', 'sha256'),
+        Index('idx_payloads_first_seen', 'first_seen'),
+    )
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    sha256 = Column(String(64), nullable=False)
+    md5 = Column(String(32), nullable=True)
+    size = Column(Integer, default=0)
+    entropy = Column(DECIMAL(4, 2), nullable=True)
+    file_type = Column(String(100), nullable=True)
+    strings = Column(JSON, nullable=True)
+    suspicious = Column(JSON, nullable=True)
+    packed = Column(Boolean, default=False)
+    analysis = Column(JSON, nullable=True)
+    source_session_id = Column(String(100), ForeignKey("sessions.id"), nullable=True)
+    first_seen = Column(DateTime(timezone=True), default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+
+
 def get_db() -> Generator[Session, None, None]:
     """Dependency for FastAPI endpoints - provides database session"""
     db = SessionLocal()
