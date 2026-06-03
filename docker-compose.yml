@@ -62,7 +62,7 @@ services:
       dockerfile: Dockerfile
     env_file: .env
     ports:
-      - "${SSH_PORT:-22}:2222"  # SSH (honeypot on standard port)
+      - "${SSH_PORT:-2223}:2222"  # SSH (honeypot on port 2223 to avoid conflict with host sshd)
       - "${TELNET_PORT:-23}:23"    # Telnet
     volumes:
       - cowrie_logs:/cowrie/var/log  # Named volume for logs
