@@ -86,3 +86,10 @@
     color: #ff4444;
     text-shadow: 0 0 2px rgba(255, 68, 68, 0.5);
 }
+
+/* Map highlight effect on marker click */
+.map-highlight {
+    box-shadow: 0 0 15px 3px #00ff88 !important;
+    transition: box-shadow 0.3s;
+    z-index: 10;
+}

@@ -94,12 +94,55 @@ function dashboardState() {
                 }
                 
                 const latlng = [data.lat, data.lon];
+                const popupContent = `<b>${ip}</b><br>${data.city || ''}, ${data.country || ''}`;
                 const marker = L.marker(latlng).addTo(this.map)
-                    .bindPopup(`<b>${ip}</b><br>${data.city || ''}, ${data.country || ''}`);
-                this.markers[ip] = marker;
+                    .bindPopup(popupContent);
+                
+                // Click marker -> highlight card
+                marker.on('click', () => {
+                    this.highlightCardByIP(ip);
+                    this.addMapGlow();
+                });
+                
+                this.markers[ip] = { marker, latlng };
             } catch (e) {
                 console.warn('Geolocation fetch failed:', ip, e);
             }
+        },
+        
+        // Focus map on IP and show popup
+        focusOnIP(ip) {
+            const m = this.markers[ip];
+            if (m && m.marker) {
+                this.map.setView(m.latlng, 8);
+                m.marker.openPopup();
+                this.addMapGlow();
+                setTimeout(() => this.removeMapGlow(), 2000);
+            }
+        },
+        
+        // Highlight card by IP
+        highlightCardByIP(ip) {
+            document.querySelectorAll('.event-card').forEach(el => {
+                el.classList.remove('ring-2', 'ring-green-400');
+            });
+            
+            const card = document.querySelector(`.event-card[data-ip="${ip}"]`);
+            if (card) {
+                card.classList.add('ring-2', 'ring-green-400');
+                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        },
+        
+        // Map glow effect
+        addMapGlow() {
+            const mapEl = document.getElementById('map');
+            if (mapEl) mapEl.classList.add('map-highlight');
+        },
+        
+        removeMapGlow() {
+            const mapEl = document.getElementById('map');
+            if (mapEl) mapEl.classList.remove('map-highlight');
         },
         
         // SSE stream with resilience - fallback to polling if SSE fails
@@ -187,6 +230,7 @@ function dashboardState() {
             const eventsDiv = document.getElementById('events');
             const div = document.createElement('div');
             div.className = 'event-card';
+            div.dataset.ip = event.data?.attacker_ip || event.data?.ip || '';
             div.innerHTML = `
                 <div class="flex items-center justify-between mb-1">
                     <span class="event-type text-xs px-2 py-0.5 bg-blue-400 text-black rounded">${event.type}</span>
@@ -196,6 +240,17 @@ function dashboardState() {
                     ${JSON.stringify(event.data, null, 2)}
                 </div>
             `;
+            
+            // Mouseenter -> focus map on IP
+            div.addEventListener('mouseenter', () => {
+                const ip = event.data?.attacker_ip || event.data?.ip;
+                if (ip) this.focusOnIP(ip);
+            });
+            
+            // Mouseleave -> remove highlight
+            div.addEventListener('mouseleave', () => {
+                this.removeMapGlow();
+            });
             
             // Click handler for session inspection
             div.addEventListener('click', () => {
