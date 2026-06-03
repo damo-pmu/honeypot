@@ -267,7 +267,7 @@ async def stream(request: Request, session: Optional[str] = Depends(get_session)
     async def event_generator():
         # Send existing events
         for event in _dashboard_events[-20:]:
-            yield f"data: {json.dumps(event)}\\n\\n"
+            yield f"data: {json.dumps(event)}\n\n"
         
         # Stream new events
         last_id = len(_dashboard_events)
@@ -276,7 +276,7 @@ async def stream(request: Request, session: Optional[str] = Depends(get_session)
                 break
             
             while last_id < len(_dashboard_events):
-                yield f"data: {json.dumps(_dashboard_events[last_id])}\\n\\n"
+                yield f"data: {json.dumps(_dashboard_events[last_id])}\n\n"
                 last_id += 1
             
             await asyncio.sleep(0.5)
@@ -285,8 +285,8 @@ async def stream(request: Request, session: Optional[str] = Depends(get_session)
 
 
 @router.get("/events/recent")
-def get_recent_events(session: str = Depends(require_auth), limit: int = 20):
-    """Get recent events - requires session"""
+def get_recent_events(limit: int = 20):
+    """Get recent events - for polling fallback (public for auto-refresh)"""
     return _dashboard_events[-limit:]
 
 
@@ -314,3 +314,25 @@ def debug_status():
         "sessions_active": len(_sessions),
         "memory_usage": "ok"
     }
+
+
+@router.get("/api/geolocate/{ip}")
+async def geolocate_ip(ip: str):
+    """Proxy geolocate IP to avoid CORS issues from browser"""
+    import httpx
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(f"http://ip-api.com/json/{ip}", timeout=5.0)
+            data = resp.json()
+            
+            if data.get("status") == "success":
+                return {
+                    "lat": data.get("lat"),
+                    "lon": data.get("lon"),
+                    "city": data.get("city", ""),
+                    "country": data.get("country", ""),
+                    "ip": ip
+                }
+            return {"error": "No location data"}
+    except Exception as e:
+        return {"error": str(e)}

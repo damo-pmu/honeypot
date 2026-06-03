@@ -55,13 +55,23 @@ function dashboardState() {
         
         // Leaflet map initialization - called after DOM is ready
         initMap() {
+            // Prevent double initialization
+            if (this.map || window._mapInitialized) return;
+            
             const mapEl = document.getElementById('map');
-            if (!mapEl || mapEl.offsetHeight === 0) {
+            if (!mapEl) {
+                setTimeout(() => this.initMap(), 100);
+                return;
+            }
+            
+            // Wait for height to be set
+            if (mapEl.offsetHeight === 0) {
                 setTimeout(() => this.initMap(), 100);
                 return;
             }
             
             this.map = L.map('map').setView([20, 0], 2);
+            window._mapInitialized = true;
             
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: 'Honeypot SOC',
@@ -74,46 +84,81 @@ function dashboardState() {
             if (this.markers[ip]) return;
             
             try {
-                const resp = await fetch(`https://ipapi.co/${ip}/json/`);
+                // Use proxy endpoint to avoid CORS issues
+                const resp = await fetch(`/dashboard/api/geolocate/${ip}`);
                 const data = await resp.json();
                 
-                const latlng = [data.lat, data.lon];
-                if (latlng[0] && latlng[1]) {
-                    const marker = L.marker(latlng).addTo(this.map)
-                        .bindPopup(`<b>${ip}</b><br>${data.city || ''}, ${data.country_name || ''}`);
-                    this.markers[ip] = marker;
+                if (data.error || !data.lat) {
+                    console.warn('Geolocation failed for:', ip, data.error);
+                    return;
                 }
+                
+                const latlng = [data.lat, data.lon];
+                const marker = L.marker(latlng).addTo(this.map)
+                    .bindPopup(`<b>${ip}</b><br>${data.city || ''}, ${data.country || ''}`);
+                this.markers[ip] = marker;
             } catch (e) {
-                console.warn('Geolocation failed for:', ip);
+                console.warn('Geolocation fetch failed:', ip, e);
             }
         },
         
-        // SSE stream with resilience
+        // SSE stream with resilience - fallback to polling if SSE fails
         initSSE() {
-            this.connectSSE();
+            // Try SSE first
+            if (this.trySSE()) return;
             
-            // Heartbeat ping every 30s
-            setInterval(() => this.loadStats(), 30000);
+            // Fallback to polling (works through Cloudflare)
+            this.startPolling();
         },
         
-        connectSSE() {
-            this.evtSource = new EventSource('/dashboard/stream');
-            this.connected = true;
-            
-            this.evtSource.onmessage = (e) => {
-                const event = JSON.parse(e.data);
-                this.addEventToFeed(event);
-            };
-            
-            this.evtSource.onerror = () => {
-                this.connected = false;
-                this.evtSource.close();
+        trySSE() {
+            try {
+                this.evtSource = new EventSource('/dashboard/stream');
+                this.connected = true;
                 
-                // Resilience Pattern: Auto-reconnect after 3s
-                setTimeout(() => {
-                    this.connectSSE();
-                }, 3000);
-            };
+                this.evtSource.onmessage = (e) => {
+                    const event = JSON.parse(e.data);
+                    this.addEventToFeed(event);
+                };
+                
+                this.evtSource.onerror = (e) => {
+                    // SSE failed (Cloudflare timeout) - switch to polling
+                    this.connected = false;
+                    this.evtSource.close();
+                    console.warn('SSE failed, switching to polling:', e);
+                    this.startPolling();
+                };
+                return true;
+            } catch (e) {
+                return false;
+            }
+        },
+        
+        startPolling() {
+            // Poll for new events every 5s (Cloudflare compatible)
+            setInterval(async () => {
+                const lastCount = this.stats.total_events || 0;
+                await this.loadStats();
+                if (this.stats.total_events > lastCount) {
+                    // Stats changed, fetch recent events
+                    this.pollEvents();
+                }
+            }, 5000);
+        },
+        
+        async pollEvents() {
+            try {
+                const resp = await fetch('/dashboard/events/recent?limit=10');
+                const events = await resp.json();
+                events.forEach(e => {
+                    // Add to feed if not already there
+                    if (!this.events.find(existing => existing.timestamp === e.timestamp)) {
+                        this.addEventToFeed(e);
+                    }
+                });
+            } catch (e) {
+                console.warn('Polling failed:', e);
+            }
         },
         
         // Add event to live feed
@@ -123,9 +168,10 @@ function dashboardState() {
                 return;
             }
             
-            // Geolocate IP
-            if (event.data?.ip) {
-                this.geolocateIP(event.data.ip);
+            // Geolocate IP - use attacker_ip field
+            const ip = event.data?.attacker_ip || event.data?.ip;
+            if (ip) {
+                this.geolocateIP(ip);
             }
             
             // Add to events list
