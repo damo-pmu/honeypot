@@ -140,3 +140,24 @@ class AttackRepository:
         ).delete()
         self.db.commit()
         return deleted
+    
+    def get_by_session(self, session_id: str) -> List[Dict[str, Any]]:
+        """Get all attacks for a session - for timeline/replay/mitre endpoints"""
+        attacks = self.db.query(AttackDB).filter(
+            AttackDB.session_id == session_id
+        ).order_by(desc(AttackDB.timestamp)).all()
+        
+        return [
+            {
+                "id": a.id,
+                "timestamp": a.timestamp.isoformat(),
+                "attack_type": a.attack_type,
+                "protocol": a.protocol,
+                "attacker_ip": a.attacker_ip,
+                "payload": a.payload,
+                "severity": a.severity,
+                "ioc_value": a.ioc_value,
+                "ioc_type": a.ioc_type
+            }
+            for a in attacks
+        ]
