@@ -157,6 +157,24 @@ def get_session_replay(session_id: str, db: Session = Depends(get_db)):
     return service.get_replay()
 
 
+@router.get("/api/mitre/{session_id}")
+def get_mitre_mapping(session_id: str, db: Session = Depends(get_db)):
+    """Get MITRE ATT&CK mapping for all events in session"""
+    from src.repositories.attack_repository import AttackRepository
+    from src.services.mitre_mapper import MitreMapper
+    
+    repo = AttackRepository(db)
+    events = repo.get_by_session(session_id)
+    
+    all_mappings = []
+    for event in events:
+        mapper = MitreMapper(event)
+        mappings = mapper.map()
+        all_mappings.extend(mappings)
+    
+    return {"mappings": all_mappings, "session_id": session_id}
+
+
 @router.get("/api/map")
 def get_map_data(db: Session = Depends(get_db)):
     """Get geoip markers for map - already enriched in DB"""
