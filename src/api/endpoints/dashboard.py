@@ -281,6 +281,41 @@ def get_payload_detail(sha256: str, db: Session = Depends(get_db)):
     }
 
 
+@router.get("/api/behavior/{session_id}")
+def get_behavior_analysis(session_id: str, db: Session = Depends(get_db)):
+    """Analyze if attacker is human or bot"""
+    from src.repositories.attack_repository import AttackRepository
+    from src.services.behavior_analyzer import BehaviorAnalyzer
+    
+    repo = AttackRepository(db)
+    events = repo.get_by_session(session_id)
+    
+    analyzer = BehaviorAnalyzer(session_id, events)
+    return analyzer.analyze()
+
+
+@router.get("/api/graph/{session_id}")
+def get_investigation_graph(session_id: str, db: Session = Depends(get_db)):
+    """Get full investigation graph for a session"""
+    from src.services.graph_builder import GraphBuilder
+    
+    builder = GraphBuilder(db)
+    return builder.build_for_session(session_id)
+
+
+@router.get("/api/campaigns")
+def get_campaigns(
+    db: Session = Depends(get_db),
+    hours: int = 24,
+    limit: int = 20
+):
+    """Get detected attack campaigns"""
+    from src.services.campaign_engine import CampaignEngine
+    
+    engine = CampaignEngine(db)
+    return {"campaigns": engine.detect_campaigns(hours=hours)[:limit]}
+
+
 @router.get("/api/map")
 def get_map_data(db: Session = Depends(get_db)):
     """Get geoip markers for map - already enriched in DB"""
@@ -346,24 +381,30 @@ async def stream(request: Request, session: Optional[str] = Depends(get_session)
         event_bus.set_queue(_sse_queue)
     
     async def event_generator():
-        # Send initial connection established
         yield f'data: {json.dumps({"type": "connected", "timestamp": datetime.utcnow().isoformat()})}\n\n'
         
-        # Stream events from queue
         while True:
             if await request.is_disconnected():
                 break
-            
             try:
-                # Non-blocking wait with timeout for connection check
                 event = await _sse_queue.get()
                 yield f'data: {json.dumps({"type": event.type, "event_id": event.event_id, "timestamp": event.timestamp, "reference_id": event.reference_id, "session_id": event.session_id})}\n\n'
             except Exception:
                 await asyncio.sleep(0.5)
-            
             await asyncio.sleep(0.1)
     
     return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
+@router.get("/metrics")
+def prometheus_metrics():
+    """Prometheus metrics endpoint"""
+    from src.services.observability_service import observability
+    metrics = observability.get_metrics()
+    if metrics:
+        from fastapi import Response
+        return Response(content=metrics, media_type="text/plain")
+    return {"status": "prometheus not configured"}
 
 
 # ============================================================
