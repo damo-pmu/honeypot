@@ -47,6 +47,7 @@
     padding: 12px;
     margin-bottom: 8px;
     transition: border-color 0.2s;
+    cursor: pointer;
 }
 
 .event-card:hover {
