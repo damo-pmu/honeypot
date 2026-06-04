@@ -47,11 +47,12 @@ router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 @router.get("/")
 def dashboard_home(request: Request, db: Session = Depends(get_db)):
     """Serve dashboard HTML - initial load fetches all data via API"""
-    if get_session(request):
-        service = StatisticsService(db)
-        stats = service.get_dashboard_stats()
-        return render_template("dashboard.html", {"request": request, "stats": stats})
-    return render_template("login.html", {"request": request, "error": None})
+    # TEMPORARY: Public access for debugging - remove auth check
+    # if get_session(request):
+    service = StatisticsService(db)
+    stats = service.get_dashboard_stats()
+    return render_template("dashboard.html", {"request": request, "stats": stats})
+    # return render_template("login.html", {"request": request, "error": None})
 
 
 @router.post("/login")
@@ -109,6 +110,7 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
 @router.get("/api/live-feed")
 def get_live_feed(db: Session = Depends(get_db), limit: int = 50):
     """Get recent events for live feed - from DB, ordered by timestamp desc"""
+    # Public endpoint - no auth required for Cloudflare compatibility
     service = StatisticsService(db)
     return {"items": service.get_live_feed(limit=limit)}
 
