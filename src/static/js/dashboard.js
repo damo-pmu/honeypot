@@ -188,9 +188,21 @@ function dashboardState() {
         
         // SSE stream with resilience - fallback to polling if SSE fails
         initSSE() {
-            // Try SSE first
-            if (this.trySSE()) return;
+            // Cloudflare doesn't support SSE - skip directly to polling
+            // Check via server header or just use polling as primary for resilience
+            const isCloudflare = typeof navigator !== 'undefined' && 
+                (navigator.userAgent.includes('Cloudflare') || 
+                 document.referrer.includes('hiddenlabs.cc'));
             
+            if (isCloudflare) {
+                console.log('Cloudflare detected, using polling only');
+                this.startPolling();
+                return;
+            }
+            
+            // Try SSE only for non-Cloudflare
+            if (this.trySSE()) return;
+
             // Fallback to polling (works through Cloudflare)
             this.startPolling();
         },
@@ -219,9 +231,13 @@ function dashboardState() {
                 };
                 
                 this.evtSource.onerror = (e) => {
-                    this.connected = false;
+                    // Silent error - will be retried or fall back
                     this.evtSource.close();
-                    console.warn('SSE failed, switching to polling:', e);
+                    // Only log once per session for debugging
+                    if (!window._sse_logged_error) {
+                        console.log('SSE unavailable, using polling fallback');
+                        window._sse_logged_error = true;
+                    }
                     this.startPolling();
                 };
                 return true;
