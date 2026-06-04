@@ -61,6 +61,7 @@ function dashboardState() {
                 const resp = await fetch('/dashboard/api/live-feed?limit=50');
                 const { items } = await resp.json();
                 this.events = items || [];
+                this.renderAllEvents();  // ← Missing call!
             } catch (e) {
                 console.warn('DB events load failed:', e);
             }
