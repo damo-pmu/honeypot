@@ -58,13 +58,20 @@ function dashboardState() {
         
         // Load events from DB (persisted across rebuilds)
         async loadDBEvents() {
+            console.log('[dashboard] loadDBEvents() START');
             try {
                 const resp = await fetch('/dashboard/api/live-feed?limit=50');
-                const { items } = await resp.json();
+                console.log('[dashboard] API response status:', resp.status);
+                const jsonData = await resp.text();
+                console.log('[dashboard] Raw response:', jsonData.substring(0, 200));
+                const { items } = JSON.parse(jsonData);
+                console.log('[dashboard] Parsed items:', items?.length || 0);
                 this.events = items || [];
-                this.renderAllEvents();  // ← Missing call!
+                console.log('[dashboard] Calling renderAllEvents with', this.events.length, 'events');
+                this.renderAllEvents();
             } catch (e) {
-                console.warn('DB events load failed:', e);
+                console.error('[dashboard] DB events load FAILED:', e.message);
+                console.error('[dashboard] Stack:', e.stack);
             }
         },
         
@@ -82,14 +89,20 @@ function dashboardState() {
         
         // Render all events to DOM
         renderAllEvents() {
-            console.log('[dashboard] renderAllEvents() called, events:', this.events.length);  // Debug
+            console.log('[dashboard] renderAllEvents() START, this.events:', this.events?.length || 0);
             const eventsDiv = document.getElementById('events');
+            console.log('[dashboard] eventsDiv found:', !!eventsDiv);
             if (!eventsDiv) {
                 console.error('[dashboard] ERROR: #events element not found!');
                 return;
             }
             eventsDiv.innerHTML = '';
-            this.events.forEach(e => this.renderEventCard(e));
+            console.log('[dashboard] Cleared eventsDiv, now rendering', this.events.length, 'events');
+            this.events.forEach((e, idx) => {
+                console.log('[dashboard] Rendering event', idx, e.type || 'no-type');
+                this.renderEventCard(e);
+            });
+            console.log('[dashboard] renderAllEvents() COMPLETE');
         },
         
         // Leaflet map initialization - called after DOM is ready
@@ -304,7 +317,12 @@ function dashboardState() {
         
         // Render event card (for HTMX compatibility)
         renderEventCard(event) {
+            console.log('[dashboard] renderEventCard called for:', event?.type, event?.timestamp);
             const eventsDiv = document.getElementById('events');
+            if (!eventsDiv) {
+                console.error('[dashboard] renderEventCard: eventsDiv not found!');
+                return;
+            }
             const div = document.createElement('div');
             div.className = 'event-card';
             div.dataset.ip = event.data?.attacker_ip || event.data?.ip || '';
