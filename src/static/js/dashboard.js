@@ -22,6 +22,7 @@ function dashboardState() {
         
         // Initialize on load
         init() {
+            console.log('[dashboard] init() called');  // Debug
             this.loadInitialStats();  // Load from rendered HTML first
             this.loadStats();         // Then fetch fresh data
             this.loadDBEvents();      // Load persisted DB events
@@ -81,7 +82,12 @@ function dashboardState() {
         
         // Render all events to DOM
         renderAllEvents() {
+            console.log('[dashboard] renderAllEvents() called, events:', this.events.length);  // Debug
             const eventsDiv = document.getElementById('events');
+            if (!eventsDiv) {
+                console.error('[dashboard] ERROR: #events element not found!');
+                return;
+            }
             eventsDiv.innerHTML = '';
             this.events.forEach(e => this.renderEventCard(e));
         },
