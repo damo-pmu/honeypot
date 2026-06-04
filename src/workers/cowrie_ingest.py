@@ -110,7 +110,7 @@ def process_event(line: str):
     event_id = event.get("eventid", "")
     src_ip = event.get("src_ip", "unknown")
     src_port = event.get("src_port", 0)
-    session_id = f"{src_ip}:{src_port}"
+    session_id = event.get("session", f"{src_ip}:{src_port}")  # Use Cowrie's session UUID
     
     if "login" in event_id:
         # Login attempt - create attacker + session
@@ -118,14 +118,14 @@ def process_event(line: str):
         password = event.get("password", "")
         
         send_to_api("/attackers", {"ip": src_ip})
-        send_to_api("/internal/sessions", {
+        send_to_api("/dashboard/internal/sessions", {
             "session_id": session_id,
             "attacker_ip": src_ip,
             "protocol": "SSH"
         })
         
         # Log attack event to NEW internal endpoint
-        send_to_api("/internal/events", {
+        send_to_api("/dashboard/internal/events", {
             "session_id": session_id,
             "attacker_ip": src_ip,
             "protocol": "SSH",
@@ -151,7 +151,7 @@ def process_event(line: str):
         process_command_with_ioc(command, session_id, src_ip)
         
         # Log attack to NEW internal endpoint
-        send_to_api("/internal/events", {
+        send_to_api("/dashboard/internal/events", {
             "session_id": session_id,
             "attacker_ip": src_ip,
             "protocol": "SSH",
@@ -166,7 +166,7 @@ def process_event(line: str):
         url = event.get("url", "")
         if url:
             process_command_with_ioc(url, "download", src_ip)
-            send_to_api("/internal/events", {
+            send_to_api("/dashboard/internal/events", {
                 "session_id": session_id,
                 "attacker_ip": src_ip,
                 "protocol": "SSH",
@@ -177,7 +177,7 @@ def process_event(line: str):
     
     elif "session.connect" in event_id:
         send_to_api("/attackers", {"ip": src_ip})
-        send_to_api("/internal/sessions", {
+        send_to_api("/dashboard/internal/sessions", {
             "session_id": session_id,
             "attacker_ip": src_ip,
             "protocol": "SSH"
@@ -199,16 +199,23 @@ def ingest_logs():
         time.sleep(2)
     
     # Process existing content first (all historical events)
-    with open(log_path, "r") as f:
-        for line in f:
-            process_event(line)
+    last_size = 0
+    last_pos = 0
+    
+    while True:
+        try:
+            current_size = log_path.stat().st_size
+            if current_size > last_size:
+                with open(log_path, "r") as f:
+                    f.seek(last_pos)
+                    for line in f:
+                        process_event(line)
+                    last_pos = f.tell()
+                last_size = current_size
+        except Exception as e:
+            print(f"[worker] Error: {e}")
         
-        # Then watch for new events
-        while True:
-            line = f.readline()
-            if line:
-                process_event(line)
-            time.sleep(0.1)
+        time.sleep(1)
 
 
 if __name__ == "__main__":

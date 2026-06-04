@@ -33,7 +33,7 @@ function dashboardState() {
         // Stats loading
         async loadStats() {
             try {
-                const resp = await fetch('/dashboard/stats');
+                const resp = await fetch('/dashboard/api/stats');
                 const data = await resp.json();
                 this.stats = { ...this.stats, ...data };
             } catch (e) {
@@ -244,8 +244,9 @@ function dashboardState() {
         
         async pollEvents() {
             try {
-                const resp = await fetch('/dashboard/events/recent?limit=10');
-                const events = await resp.json();
+                const resp = await fetch('/dashboard/api/events/history?limit=10');
+                const data = await resp.json();
+                const events = data.items || data;  // Handle both formats
                 events.forEach(e => {
                     // Add to feed if not already there
                     if (!this.events.find(existing => existing.timestamp === e.timestamp)) {

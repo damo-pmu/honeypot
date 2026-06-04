@@ -1,10 +1,12 @@
 """Statistics service - aggregates data from repository, no DB access directly"""
 from typing import Dict, Any, List, Optional
 from sqlalchemy.orm import Session
+from sqlalchemy import desc
 
 from src.repositories.statistics_repository import StatisticsRepository
 from src.repositories.attack_repository import AttackRepository
 from src.repositories.session_repository import SessionRepository
+from src.core.database import AttackDB
 
 
 class StatisticsService:
@@ -33,10 +35,36 @@ class StatisticsService:
         return self.stats_repo.get_geoip_markers(limit)
     
     def get_live_feed(self, limit: int = 50) -> List[Dict[str, Any]]:
-        """Get recent events for live feed"""
-        attacks = self.attack_repo.get_recent(limit=limit)
-        # Could also merge commands if needed
-        return attacks
+        """Get recent attacks for live feed - mapped to filter types"""
+        from src.core.database import AttackDB
+        attacks = self.db.query(AttackDB).order_by(
+            desc(AttackDB.timestamp)
+        ).limit(limit).all()
+        
+        # Map attack types to frontend filter values
+        event_type_map = {
+            "BRUTE_FORCE": "ssh_attempt",
+            "COMMAND_EXECUTION": "command",
+            "MALWARE_DOWNLOAD": "attack",
+            "AUTOMATED_SCANNER": "ssh_attempt"
+        }
+        
+        return [
+            {
+                "id": a.id,
+                "type": event_type_map.get(a.attack_type, "attack"),
+                "timestamp": a.timestamp.isoformat(),
+                "data": {
+                    "attack_type": a.attack_type,
+                    "protocol": a.protocol,
+                    "attacker_ip": a.attacker_ip,
+                    "severity": a.severity,
+                    "payload": a.payload[:200] if a.payload else None,
+                    "session_id": a.session_id
+                }
+            }
+            for a in attacks
+        ]
 
 
 class DashboardService:

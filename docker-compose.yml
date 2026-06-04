@@ -23,7 +23,7 @@ services:
       - ./src/static:/app/static:ro
       - ./src/templates:/app/src/templates:ro
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -55,14 +55,16 @@ services:
 
   # SSH/Telnet Honeypot (Cowrie)
   cowrie:
-    image: cowrie/cowrie:latest
+    build:
+      context: ./docker/cowrie
+      dockerfile: Dockerfile
     env_file: .env
     ports:
       - "${SSH_PORT:-22}:2222"  # SSH (honeypot on standard port 22, host sshd on 22222)
       - "${TELNET_PORT:-23}:23"    # Telnet
     volumes:
-      - cowrie_logs:/cowrie/var/log  # MUST match cowrie.cfg log_path
-      - cowrie_data:/cowrie/var/lib
+      - cowrie_logs:/cowrie/var/log/cowrie  # JSON logs (cowrie adds its own subdir)
+      - cowrie_data:/cowrie/var/lib/cowrie  # SSH keys, data
     environment:
       - HONEYPOT_API_URL=http://api:8000/events
 
@@ -75,10 +77,10 @@ services:
       - cowrie
       - api
     volumes:
-      - cowrie_logs:/cowrie/var/log:ro  # MUST match cowrie volume mount
+      - cowrie_logs:/cowrie/var/log/cowrie:ro  # MUST match cowrie volume mount
       - worker_logs:/app/logs
     environment:
-      - COWRIE_LOG=/cowrie/var/log/cowrie.json  # MUST match cowrie.cfg log_path
+      - COWRIE_LOG=/cowrie/var/log/cowrie/cowrie.json  # MUST match cowrie volume mount
       - API_URL=http://api:8000
       - AUDIT_LOG_PATH=/app/logs/audit.log
 

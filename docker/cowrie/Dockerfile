@@ -1,12 +1,38 @@
-# Cowrie honeypot integration - Docker setup
-# Uses official cowrie image with volume mount for config/logs
+# Debian-based Cowrie for flexible logging control
+FROM debian:bookworm-slim
 
-FROM cowrie/cowrie:latest
+# Dependencies
+RUN apt-get update && apt-get install -y \
+    python3 python3-pip python3-venv \
+    libffi-dev libssl-dev netcat-openbsd \
+    && rm -rf /var/lib/apt/lists/*
 
-# No custom config needed - official image works with defaults
-# Logs go to /cowrie/var/log/cowrie.json by default
+# Install Cowrie via pip (latest stable)
+WORKDIR /cowrie
+RUN python3 -m venv cowrie-env && \
+    /cowrie/cowrie-env/bin/pip install --no-cache-dir cowrie
+
+# Create cowrie user (non-root as required)
+RUN useradd -m -s /bin/bash cowrie
+
+# Copy config with JSON logging enabled
+COPY cowrie.cfg /cowrie/cowrie-git/etc/cowrie.cfg
+
+# Create log/lib directories with proper permissions for cowrie user
+# Cowrie pip package creates var/log/cowrie/ and var/lib/cowrie/ relative to WORKDIR
+RUN mkdir -p /cowrie/var/log/cowrie /cowrie/var/lib/cowrie/tty && \
+    chown -R cowrie:cowrie /cowrie && \
+    chmod -R 755 /cowrie
+
+# Volumes - MUST match worker mount
+VOLUME ["/cowrie/var/log/cowrie", "/cowrie/var/lib/cowrie"]
 
 EXPOSE 2222 23
 
+# Run as cowrie user (required by Cowrie security)
+USER cowrie
+
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s CMD nc -z localhost 2222 || exit 1
+
+ENTRYPOINT ["/cowrie/cowrie-env/bin/twistd", "-n", "--umask=0022", "--pidfile=", "cowrie"]
