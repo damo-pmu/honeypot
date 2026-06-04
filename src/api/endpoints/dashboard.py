@@ -113,6 +113,14 @@ def get_live_feed(db: Session = Depends(get_db), limit: int = 50):
     return {"items": service.get_live_feed(limit=limit)}
 
 
+# Public endpoints (no auth) - for Cloudflare compatibility where cookies don't persist
+@router.get("/api/public/live-feed")
+def get_live_feed_public(limit: int = 50, db: Session = Depends(get_db)):
+    """Public endpoint for live feed - no auth required (for Cloudflare)"""
+    service = StatisticsService(db)
+    return {"items": service.get_live_feed(limit=limit)}
+
+
 @router.get("/api/sessions")
 def get_sessions(
     db: Session = Depends(get_db),

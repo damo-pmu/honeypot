@@ -59,8 +59,10 @@ function dashboardState() {
         // Load events from DB (persisted across rebuilds)
         async loadDBEvents() {
             console.log('[dashboard] loadDBEvents() START');
+            // Use public endpoint for Cloudflare compatibility
+            const endpoint = '/dashboard/api/public/live-feed?limit=50';
             try {
-                const resp = await fetch('/dashboard/api/live-feed?limit=50');
+                const resp = await fetch(endpoint);
                 console.log('[dashboard] API response status:', resp.status);
                 const jsonData = await resp.text();
                 console.log('[dashboard] Raw response:', jsonData.substring(0, 200));
