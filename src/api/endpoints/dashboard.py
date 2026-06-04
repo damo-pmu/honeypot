@@ -47,12 +47,10 @@ router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 @router.get("/")
 def dashboard_home(request: Request, db: Session = Depends(get_db)):
     """Serve dashboard HTML - initial load fetches all data via API"""
-    # TEMPORARY: Public access for debugging - remove auth check
-    # if get_session(request):
+    # TEMPORARY: Public access for debugging
     service = StatisticsService(db)
     stats = service.get_dashboard_stats()
     return render_template("dashboard.html", {"request": request, "stats": stats})
-    # return render_template("login.html", {"request": request, "error": None})
 
 
 @router.post("/login")
