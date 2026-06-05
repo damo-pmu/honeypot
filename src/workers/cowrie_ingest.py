@@ -112,6 +112,11 @@ def process_event(line: str):
     src_port = event.get("src_port", 0)
     session_id = event.get("session", f"{src_ip}:{src_port}")  # Use Cowrie's session UUID
     
+    # Skip healthcheck connections (Cowrie internal healthchecks on 127.0.0.1 with 0 duration)
+    # These appear as cowrie.session.connect/cowrie.session.closed with no login/command events
+    if src_ip == "127.0.0.1" and "session.connect" in event_id and "login" not in event_id and "command" not in event_id:
+        return  # Skip pure connection events from localhost (healthchecks)
+    
     if "login" in event_id:
         # Login attempt - create attacker + session
         username = event.get("username", "")

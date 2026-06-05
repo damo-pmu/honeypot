@@ -88,6 +88,30 @@ def apply_retention():
         print(f"Retention: {attacks_deleted} attacks, {commands_deleted} commands, {sessions_closed} sessions closed")
 
 
+def cleanup_healthcheck_sessions():
+    """Delete sessions identified as healthchecks: localhost IP with zero interactions"""
+    with engine.connect() as conn:
+        # Delete attacks linked to healthcheck sessions first (FK cascade)
+        result = conn.execute(text("""
+            DELETE FROM attacks 
+            WHERE session_id IN (
+                SELECT id FROM sessions 
+                WHERE attacker_ip = '127.0.0.1' AND interaction_count = 0
+            )
+        """))
+        attacks_deleted = result.rowcount
+        
+        # Delete the healthcheck sessions
+        result = conn.execute(text("""
+            DELETE FROM sessions 
+            WHERE attacker_ip = '127.0.0.1' AND interaction_count = 0
+        """))
+        sessions_deleted = result.rowcount
+        
+        conn.commit()
+        print(f"Healthcheck cleanup: {sessions_deleted} sessions, {attacks_deleted} attacks removed")
+
+
 def vacuum_tables():
     """Vacuum tables for performance (manual run)"""
     with engine.connect() as conn:
@@ -108,5 +132,7 @@ if __name__ == "__main__":
         vacuum_tables()
     elif cmd == "indexes":
         create_indexes()
+    elif cmd == "cleanup-healthcheck":
+        cleanup_healthcheck_sessions()
     else:
-        print("Usage: db_maintenance.py [timestamps|retention|vacuum|indexes]")
+        print("Usage: db_maintenance.py [timestamps|retention|vacuum|indexes|cleanup-healthcheck]")
