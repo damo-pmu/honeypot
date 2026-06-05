@@ -6,17 +6,17 @@ Framework SOC-ready pour capturer, analyser et classer les attaques.
 
 ## 🎯 Features
 
-| Module | Status |
-|--------|--------|
-| Attackers CRUD API | ✅ |
-| Sessions Tracking | ✅ |
-| Commands Logging | ✅ |
-| Scoring Engine | ✅ |
-| Behavior Classification | ✅ |
-| Database Queries | ✅ |
-| GeoIP Enrichment | ✅ |
-| Docker/Cowrie Integration | ✅ |
-| **Dashboard temps réel** | ✅ |
+| Module | Status | Docs |
+|--------|--------|------|
+| Attackers CRUD API | ✅ | [docs/APIS.md](docs/APIS.md) |
+| Sessions Tracking | ✅ | [docs/APIS.md](docs/APIS.md) |
+| Commands Logging | ✅ | [docs/APIS.md](docs/APIS.md) |
+| Scoring Engine | ✅ | [docs/SCORING.md](docs/SCORING.md) |
+| Behavior Classification | ✅ | [docs/SERVICES.md](docs/SERVICES.md) |
+| Database Queries | ✅ | [docs/QUERIES.md](docs/QUERIES.md) |
+| GeoIP Enrichment | ✅ | [docs/APIS.md](docs/APIS.md) |
+| Docker/Cowrie Integration | ✅ | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
+| **Dashboard temps réel** | ✅ | [docs/APIS.md](docs/APIS.md) |
 
 ## 🚀 Démarrage rapide
 
@@ -27,54 +27,52 @@ curl http://localhost:8000/health
 
 ## 📡 Endpoints disponibles
 
-| Endpoint | Description |
+| Endpoint | Description | Docs |
+|----------|-------------|------|
+| `/attackers` | Gestion des attaquant·e·s | [APIS.md](docs/APIS.md#attackers-api) |
+| `/sessions` | Sessions d'attaque | [APIS.md](docs/APIS.md#sessions-api) |
+| `/commands` | Commandes suspectes | [APIS.md](docs/APIS.md#commands-api) |
+| `/behavior/classify` | Classification timing | [APIS.md](docs/APIS.md#behavior-api) |
+| `/analytics/*` | Queries SQL | [APIS.md](docs/APIS.md#analytics-api) |
+| `/enrichment/ip` | GeoIP lookup | [APIS.md](docs/APIS.md#enrichment-api) |
+| `/dashboard/` | Monitoring temps réel | [APIS.md](docs/APIS.md#dashboard-api) |
+
+## 🛠️ Documentation
+
+| Document | Description |
 |----------|-------------|
-| `/attackers` | Gestion des attaquant·e·s |
-| `/sessions` | Sessions d'attaque |
-| `/commands` | Commandes suspectes |
-| `/behavior/classify` | Classification timing |
-| `/analytics/*` | Queries SQL |
-| `/enrichment/ip` | GeoIP lookup |
-| `/dashboard/` | Monitoring temps réel |
-| `/dashboard/login` | Authentification |
-| `/dashboard/stream` | SSE endpoint (auth requise) |
-| `/dashboard/stats` | Statistiques JSON |
+| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Architecture Docker + workers |
+| [APIS.md](docs/APIS.md) | Endpoints API complets |
+| [DATA_MODEL.md](docs/DATA_MODEL.md) | Schéma DB + relations |
+| [DATABASE.md](docs/DATABASE.md) | Config + maintenance |
+| [QUERIES.md](docs/QUERIES.md) | Queries SQL + IOC search |
+| [SCORING.md](docs/SCORING.md) | Scoring + classification |
+| [SERVICES.md](docs/SERVICES.md) | Services métiers |
+| [WORKERS.md](docs/WORKERS.md) | Workers + response engine |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Guidelines contributeurs |
 
 ## 📊 Dashboard
 
 URL : `http://honeypot.hiddenlabs.cc`
 
-### Auth minimale
-- Cookie-based session (HttpOnly, SameSite=Strict)
-- Password configuré via `DASHBOARD_PASSWORD` dans `.env`
-
-### Fonctionnalités
-- ✅ Monitoring temps réel (SSE)
-- ✅ Statistiques dynamiques
-- ✅ Carte interactive (Leaflet.js + ipapi.co)
-- ✅ Filtres par type d'attaque
-- ✅ Reconnection automatique
-
-### Configuration Apache
-Fichier : `~/.hermes/honeypot-config/honeypot.hiddenlabs.cc.conf`
-
-```apache
-ProxyPass /dashboard/stream http://localhost:8000/dashboard/stream connectiontimeout=5
-ProxyPass /dashboard/ http://localhost:8000/dashboard/
-```
+### Features
+- Monitoring temps réel (SSE)
+- Statistiques dynamiques
+- Carte interactive
+- Filtres par type d'attaque
+- Reconnection automatique
 
 ## 🛡️ Architecture
 
 ```
 src/
-├── api/          # FastAPI routers
-├── core/         # Entités/domain
-├── detection/    # Classification ML-ready
-├── honeypots/    # SSH/Telnet/FTP (Docker)
-├── infrastructure/ # DB/Logging/GeoIP
-└── workers/      # Event ingestion
+├── api/endpoints/   # FastAPI routers
+├── core/           # Entités/domain
+├── services/       # Business logic
+├── workers/        # Event ingestion
+└── response/       # Decoy templates
 ```
 
 ## 📜 Licence
 
-MIT - Usage defensif uniquement
+MIT - Usage défensif uniquement
