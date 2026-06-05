@@ -118,14 +118,14 @@ docker logs honeypot_worker
 
 ```mermaid
 flowchart LR
-    A[Cowrie<br/>SSH/Telnet] --> B[cowrie.json]
-    B --> C[Worker<br/>cowrie_ingest.py]
+    A[Cowrie SSH/Telnet] --> B[cowrie.json]
+    B --> C[Worker cowrie_ingest.py]
     C --> D{Event Type}
     D -->|login| E[/attackers]
     D -->|login| F[/sessions]
-    D -->|login| G[/attacks/log<br/>BRUTE_FORCE]
+    D -->|login| G[/attacks/log BRUTE_FORCE]
     D -->|command| H[/commands]
-    D -->|command| I[/ioc/scan<br/>inline]
-    D -->|download| J[/ioc/store<br/>url]
-    D -->|download| K[/attacks/log<br/>MALWARE_DOWNLOAD]
+    D -->|command| I[/ioc/scan inline]
+    D -->|download| J[/ioc/store url]
+    D -->|download| K[/attacks/log MALWARE_DOWNLOAD]
 ```

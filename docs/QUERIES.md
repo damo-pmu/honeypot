@@ -83,9 +83,9 @@ LIMIT {limit};
 ```mermaid
 flowchart TD
     A[IOC value] --> B{Search where?}
-    B -->|in commands| C[search_ioc_in_commands<br/>ILIKE query]
-    B -->|in payloads| D[search_ioc_in_payloads<br/>ILIKE query]
-    B -->|lookup| E[get_ioc_by_value<br/>exact match]
+    B -->|in commands| C[search_ioc_in_commands]
+    B -->|in payloads| D[search_ioc_in_payloads]
+    B -->|lookup| E[get_ioc_by_value]
     C --> F[Results]
     D --> F
     E --> F

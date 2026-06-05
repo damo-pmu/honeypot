@@ -227,7 +227,7 @@ UNKNOWN → cisco running_config
 ```mermaid
 flowchart LR
     A[Browser] --> B[/dashboard/stream]
-    B --> C[Server-Sent Events<br/>event-bus subscribe]
+    B --> C[Server-Sent Events]
     C --> D{New event?}
     D -->|yes| E[Send to client]
     D -->|no| F[Keep-alive ping]

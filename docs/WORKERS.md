@@ -83,10 +83,10 @@ RESPONSE_TEMPLATES = {
 ```mermaid
 flowchart TD
     A[Threat classified] --> B{interactions > 20?}
-    B -->|yes| C[TERMINATE<br/>safety limit]
+    B -->|yes| C[TERMINATE safety limit]
     B -->|no| D{threat_class}
     D -->|BOT| E[cisco_router/show_version]
-    D -->|AI_AGENT| F[ai_challenge/cognitive_trap<br/>adversarial]
+    D -->|AI_AGENT| F[ai_challenge/cognitive_trap]
     D -->|SCRIPT_KIDDIE| G[windows_server/credentials]
     D -->|HUMAN| H[jenkins_instance/config]
     D -->|UNKNOWN| I[cisco_router/running_config]
