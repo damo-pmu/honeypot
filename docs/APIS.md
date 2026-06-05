@@ -226,7 +226,7 @@ UNKNOWN → cisco running_config
 
 ```mermaid
 flowchart LR
-    A[Browser] --> B[/dashboard/stream]
+    A[Browser] --> B[dashboard stream]
     B --> C[Server-Sent Events]
     C --> D{New event?}
     D -->|yes| E[Send to client]

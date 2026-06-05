@@ -188,7 +188,7 @@ flowchart TD
     E -->|yes| F[Store IP IOCs]
     B --> G{URL patterns?}
     G -->|yes| H[Store URL IOCs]
-    D --> I[/ioc/store]
+    D --> I[ioc/store]
     F --> I
     H --> I
 ```

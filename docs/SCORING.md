@@ -38,7 +38,7 @@ flowchart TD
     E -->|no| G{Systematic?}
     G -->|yes| H[THREAT=POSSIBLE_AI_AGENT]
     G -->|no| I[THREAT=UNKNOWN]
-    D --> J[/response/generate]
+    D --> J[response generate]
     F --> J
     H --> J
     I --> J
