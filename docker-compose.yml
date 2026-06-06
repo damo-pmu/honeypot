@@ -84,6 +84,23 @@ services:
       - API_URL=http://api:8000
       - AUDIT_LOG_PATH=/app/logs/audit.log
 
+  # Maintenance service (retention cleanup, healthcheck filtering)
+  maintenance:
+    build:
+      context: .
+      dockerfile: docker/api/Dockerfile
+    depends_on:
+      - postgres
+    env_file: .env
+    environment:
+      - DATABASE_URL=postgresql://honeypot:${PG_PASS:-demo}@postgres:5432/honeypot
+      - RETENTION_INTERVAL=${RETENTION_INTERVAL:-86400}
+      - HEALTHCHECK_INTERVAL=${HEALTHCHECK_INTERVAL:-3600}
+    volumes:
+      - api_logs:/app/logs
+    command: python scripts/maintenance_scheduler.py
+    restart: unless-stopped
+
   # Prom/Grafana (minimal)
   prometheus:
     image: prom/prometheus
