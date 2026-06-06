@@ -83,10 +83,11 @@ class RetentionJob:
 
 # Celery app for background tasks
 if CELERY_AVAILABLE:
+    REDIS_HOST = os.getenv('REDIS_HOST', 'redis')
     celery_app = Celery(
         'honeypot',
-        broker=os.getenv('CELERY_BROKER', 'redis://redis:6379/0'),
-        backend=os.getenv('CELERY_BACKEND', 'redis://redis:6379/1')
+        broker=os.getenv('CELERY_BROKER', f'redis://{REDIS_HOST}:6379/0'),
+        backend=os.getenv('CELERY_BACKEND', f'redis://{REDIS_HOST}:6379/1')
     )
     
     @celery_app.task

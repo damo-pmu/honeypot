@@ -6,8 +6,14 @@ from sqlalchemy.orm import sessionmaker, Session
 from datetime import datetime
 from typing import Generator
 
-# Database URL from environment (set in docker-compose.yml)
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://honeypot:demo@postgres:5432/honeypot")
+# Database URL from environment (constructed from host/port if not fully provided)
+DB_USER = os.getenv("DB_USER", "honeypot")
+DB_PASSWORD = os.getenv("PG_PASS", "demo")
+DB_HOST = os.getenv("DB_HOST", "postgres")
+DB_PORT = os.getenv("DB_PORT", "5432")
+DB_NAME = os.getenv("DB_NAME", "honeypot")
+
+DATABASE_URL = os.getenv("DATABASE_URL", f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}")
 
 # Create engine with connection pooling
 engine = create_engine(DATABASE_URL, pool_pre_ping=True, pool_size=10, max_overflow=20)

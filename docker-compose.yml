@@ -14,9 +14,8 @@ services:
       # Environment variables passed from .env
       - DASHBOARD_PASS=${DASHBOARD_PASS:-demo}
       - OPENROUTER_API_KEY=${API_KEY_OPENROUTER:-demo}
-      # Constructed from .env values
-      - DATABASE_URL=postgresql://honeypot:${PG_PASS:-demo}@postgres:5432/honeypot
-      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=postgresql://honeypot:${PG_PASS:-demo}@${DB_HOST:-postgres}:${DB_PORT:-5432}/${DB_NAME:-honeypot}
+      - REDIS_URL=redis://${REDIS_HOST:-redis}:${REDIS_PORT:-6379}
     volumes:
       - api_logs:/app/logs
       - api_data:/app/data
@@ -66,7 +65,7 @@ services:
       - cowrie_logs:/cowrie/var/log/cowrie  # JSON logs (cowrie adds its own subdir)
       - cowrie_data:/cowrie/var/lib/cowrie  # SSH keys, data
     environment:
-      - HONEYPOT_API_URL=http://api:8000/events
+      - HONEYPOT_API_URL=http://${API_HOST:-api}:${API_PORT:-8000}/events
 
   # Worker: Cowrie events → API
   worker:
@@ -81,7 +80,7 @@ services:
       - worker_logs:/app/logs
     environment:
       - COWRIE_LOG=/cowrie/var/log/cowrie/cowrie.json  # MUST match cowrie volume mount
-      - API_URL=http://api:8000
+      - API_URL=http://${API_HOST:-api}:${API_PORT:-8000}
       - AUDIT_LOG_PATH=/app/logs/audit.log
 
   # Maintenance service (retention cleanup, healthcheck filtering)
@@ -93,7 +92,8 @@ services:
       - postgres
     env_file: .env
     environment:
-      - DATABASE_URL=postgresql://honeypot:${PG_PASS:-demo}@postgres:5432/honeypot
+      - DATABASE_URL=postgresql://honeypot:${PG_PASS:-demo}@${DB_HOST:-postgres}:${DB_PORT:-5432}/${DB_NAME:-honeypot}
+      - REDIS_URL=redis://${REDIS_HOST:-redis}:${REDIS_PORT:-6379}
       - RETENTION_INTERVAL=${RETENTION_INTERVAL:-86400}
       - HEALTHCHECK_INTERVAL=${HEALTHCHECK_INTERVAL:-3600}
     volumes:

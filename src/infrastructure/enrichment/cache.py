@@ -5,7 +5,9 @@ import hashlib
 from typing import Optional, Dict, Any
 import redis.asyncio as redis
 
-REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
+REDIS_HOST = os.getenv("REDIS_HOST", "redis")
+REDIS_PORT = os.getenv("REDIS_PORT", "6379")
+REDIS_URL = os.getenv("REDIS_URL", f"redis://{REDIS_HOST}:{REDIS_PORT}")
 DEFAULT_TTL = 3600  # 1 hour
 
 
