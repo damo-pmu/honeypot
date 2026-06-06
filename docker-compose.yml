@@ -6,12 +6,11 @@ services:
       dockerfile: docker/api/Dockerfile
     env_file: .env
     ports:
-      - "127.0.0.1:${API_PORT:-8000}:8000"  # localhost only - Apache reverse proxy
+      - "127.0.0.1:${API_PORT:-8000}:8000"
     depends_on:
       - postgres
       - redis
     environment:
-      # Environment variables passed from .env
       - DASHBOARD_PASS=${DASHBOARD_PASS:-demo}
       - OPENROUTER_API_KEY=${API_KEY_OPENROUTER:-demo}
       - DATABASE_URL=postgresql://honeypot:${PG_PASS:-demo}@${DB_HOST:-postgres}:${DB_PORT:-5432}/${DB_NAME:-honeypot}
@@ -20,7 +19,7 @@ services:
       - api_logs:/app/logs
       - api_data:/app/data
       - ./src/static:/app/static:ro
-      - ./src/templates:/app/src/templates:ro
+      - ./src/templates:/app/templates:ro
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 30s
@@ -59,11 +58,11 @@ services:
       dockerfile: Dockerfile
     env_file: .env
     ports:
-      - "${SSH_PORT:-22}:2222"  # SSH (honeypot on standard port 22, host sshd on 22222)
-      - "${TELNET_PORT:-23}:23"    # Telnet
+      - "${SSH_PORT:-22}:2222"
+      - "${TELNET_PORT:-23}:23"
     volumes:
-      - cowrie_logs:/cowrie/var/log/cowrie  # JSON logs (cowrie adds its own subdir)
-      - cowrie_data:/cowrie/var/lib/cowrie  # SSH keys, data
+      - cowrie_logs:/cowrie/var/log/cowrie
+      - cowrie_data:/cowrie/var/lib/cowrie
     environment:
       - HONEYPOT_API_URL=http://${API_HOST:-api}:${API_PORT:-8000}/events
 
@@ -76,10 +75,10 @@ services:
       - cowrie
       - api
     volumes:
-      - cowrie_logs:/cowrie/var/log/cowrie:ro  # MUST match cowrie volume mount
+      - cowrie_logs:/cowrie/var/log/cowrie:ro
       - worker_logs:/app/logs
     environment:
-      - COWRIE_LOG=/cowrie/var/log/cowrie/cowrie.json  # MUST match cowrie volume mount
+      - COWRIE_LOG=/cowrie/var/log/cowrie/cowrie.json
       - API_URL=http://${API_HOST:-api}:${API_PORT:-8000}
       - AUDIT_LOG_PATH=/app/logs/audit.log
 
@@ -98,7 +97,8 @@ services:
       - HEALTHCHECK_INTERVAL=${HEALTHCHECK_INTERVAL:-3600}
     volumes:
       - api_logs:/app/logs
-    command: python scripts/maintenance_scheduler.py
+    entrypoint: ["python"]
+    command: scripts/maintenance_scheduler.py
     restart: unless-stopped
 
   # Prom/Grafana (minimal)
@@ -106,7 +106,7 @@ services:
     image: prom/prometheus
     env_file: .env
     ports:
-      - "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"  # localhost only - no public scrape
+      - "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"
     volumes:
       - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
@@ -115,7 +115,7 @@ services:
     image: grafana/grafana:11.0.0
     env_file: .env
     ports:
-      - "127.0.0.1:${GRAFANA_PORT:-3000}:3000"  # localhost only - Apache reverse proxy
+      - "127.0.0.1:${GRAFANA_PORT:-3000}:3000"
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASS:-demo}
       - GF_PATHS_DATA=/var/lib/grafana
@@ -123,13 +123,9 @@ services:
       - GF_USERS_ALLOW_SIGN_UP=false
       - GF_SERVER_ROOT_URL=/grafana
       - GF_SERVER_SERVE_FROM_SUB_PATH=true
-    # Dashboard JSON files mounted for setup.sh API import (Grafana 11 provisioning disabled)
     volumes:
       - grafana_data:/var/lib/grafana
       - ./grafana/datasource.yaml:/etc/grafana/provisioning/datasources/datasource.yaml:ro
-    #   - ./grafana/dashboard.yaml:/etc/grafana/provisioning/dashboards/dashboard.yaml:ro
-    #   - ./grafana/dashboard-monitoring.json:/etc/grafana/provisioning/dashboards/monitoring.json:ro
-    #   - ./grafana/dashboard-investigation.json:/etc/grafana/provisioning/dashboards/investigation.json:ro
 
 volumes:
   postgres_data:

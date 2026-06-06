@@ -134,7 +134,7 @@ echo ""
 if [ "$FULL_MODE" = true ]; then
     docker compose --profile full up -d
 else
-    docker compose up -d api postgres redis cowrie worker
+    docker compose up -d api postgres redis cowrie worker maintenance
 fi
 
 # Import dashboard after full mode
