@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Analytics Dashboard</title>
+    <link rel="stylesheet" href="/static/css/dashboard.css" />
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Analytics Dashboard</h1>
+            <a href="/dashboard/">Back to Dashboard</a>
+        </div>
+        
+        <div class="grid">
+            <div class="card">
+                <h2>Threat Heatmap (24h)</h2>
+                <pre>{{ heatmap | tojson | safe }}</pre>
+            </div>
+            
+            <div class="card">
+                <h2>Attacker Profiles</h2>
+                <pre>{{ profiles | tojson | safe }}</pre>
+            </div>
+            
+            <div class="card">
+                <h2>Command Patterns</h2>
+                <pre>{{ patterns | tojson | safe }}</pre>
+            </div>
+            
+            <div class="card">
+                <h2>Endpoints</h2>
+                <ul>
+                    <li><a href="/dashboard/api/analytics/threat-heatmap">/api/analytics/threat-heatmap</a></li>
+                    <li><a href="/dashboard/api/analytics/attacker-profiles">/api/analytics/attacker-profiles</a></li>
+                    <li><a href="/dashboard/api/analytics/command-patterns">/api/analytics/command-patterns</a></li>
+                    <li><a href="/dashboard/api/analytics/ioc-summary">/api/analytics/ioc-summary</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
