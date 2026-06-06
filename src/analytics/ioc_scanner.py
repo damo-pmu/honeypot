@@ -1,5 +1,4 @@
 """IOC (Indicators of Compromise) scanning module"""
-import hashlib
 import re
 from typing import List, Dict
 from pydantic import BaseModel

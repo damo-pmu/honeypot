@@ -4,7 +4,7 @@ from typing import Dict, Any, List, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
-from src.core.database import AttackDB, SessionDB, AttackerDB, CommandDB
+from src.core.database import AttackDB, SessionDB, AttackerDB, CommandDB, IOCDb
 
 
 class StatisticsRepository:
@@ -35,6 +35,17 @@ class StatisticsRepository:
             SessionDB.end_time.is_(None)
         ).count()
         
+        # Unique attackers (total)
+        unique_attackers = self.db.query(AttackerDB).count()
+        
+        # High threat count (threat_score >= 70)
+        high_threat_count = self.db.query(AttackerDB).filter(
+            AttackerDB.threat_score >= 70
+        ).count()
+        
+        # IOC count
+        ioc_count = self.db.query(IOCDb).count()
+        
         # Attack type breakdown
         attack_types = self.db.query(
             AttackDB.attack_type,
@@ -51,6 +62,9 @@ class StatisticsRepository:
             "attacks_24h": attacks_24h,
             "unique_ips_24h": unique_ips_24h,
             "active_sessions": active_sessions,
+            "unique_attackers": unique_attackers,
+            "high_threat_count": high_threat_count,
+            "ioc_count": ioc_count,
             "attack_type_breakdown": [
                 {"type": at.attack_type, "count": at.count}
                 for at in attack_types

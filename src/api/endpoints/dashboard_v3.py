@@ -70,8 +70,12 @@ def require_dashboard_auth(request: Request) -> bool:
 @router.get("/", response_class=HTMLResponse)
 def dashboard_home(request: Request, db: Session = Depends(get_db)):
     """Serve dashboard home page"""
-    service = StatisticsService(db)
-    stats = service.get_dashboard_stats()
+    try:
+        service = StatisticsService(db)
+        stats = service.get_dashboard_stats()
+    except Exception as e:
+        return f"<html><body><h1>Dashboard Error</h1><pre>{e}</pre></body></html>"
+    
     return f"""
     <!DOCTYPE html>
     <html>
@@ -125,31 +129,9 @@ def dashboard_home(request: Request, db: Session = Depends(get_db)):
                     <div class="value">{stats.get('ioc_count', 0)}</div>
                 </div>
             </div>
-            
-            <div class="controls">
-                <button class="btn" onclick="location.href='/dashboard/api/stats'">Refresh Stats</button>
-                <button class="btn" onclick="location.href='/dashboard/api/export/threat-report'">Export Report</button>
-            </div>
-            
-            <h2 style="margin: 20px 0; font-size: 18px;">Recent Activity</h2>
-            <div id="live-feed" style="background: #1a1a1a; padding: 20px; border-radius: 8px; font-family: monospace; font-size: 12px; max-height: 400px; overflow-y: auto;"></div>
-            
-            <script>
-                async function loadLiveFeed() {{
-                    const res = await fetch('/dashboard/api/live-feed?limit=10');
-                    const data = await res.json();
-                    const feed = document.getElementById('live-feed');
-                    feed.innerHTML = data.items.map(item => 
-                        `<div style="margin-bottom: 10px; color: #0f0;">[{item.timestamp}] {item.description}</div>`
-                    ).join('');
-                }}
-                loadLiveFeed();
-                setInterval(loadLiveFeed, 5000);
-            </script>
-        </div>
-    </body>
-    </html>
-    """
+            </body>
+        </html>
+        """
 
 
 # ============================================================
@@ -487,3 +469,78 @@ def get_endpoint_metadata():
             ]
         }
     }
+
+
+# ============================================================
+# UI Route: Analytics Page
+# ============================================================
+@router.get("/analytics", response_class=HTMLResponse)
+def analytics_page(request: Request, db: Session = Depends(get_db)):
+    """Serve analytics dashboard page with charts and insights"""
+    try:
+        analytics = DashboardAnalyticsService(db)
+        heatmap = analytics.get_threat_heat_map(hours=24)
+        profiles = analytics.get_attacker_profiles(limit=10)
+        patterns = analytics.get_command_patterns(limit=20)
+    except Exception:
+        heatmap = {"heatmap": {}, "period_hours": 24}
+        profiles = []
+        patterns = {"patterns": []}
+
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Analytics Dashboard</title>
+        <style>
+            * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+            body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f0f0f; color: #e0e0e0; }}
+            .container {{ max-width: 1400px; margin: 0 auto; padding: 20px; }}
+            .header {{ margin-bottom: 30px; }}
+            .header h1 {{ font-size: 28px; color: #fff; }}
+            .header a {{ margin-left: 20px; color: #0f0; text-decoration: none; }}
+            .section {{ background: #1a1a1a; padding: 20px; border-radius: 8px; margin-bottom: 20px; }}
+            .section h2 {{ color: #0f0; margin-bottom: 15px; }}
+            .grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }}
+            .card {{ background: #222; padding: 15px; border-radius: 4px; }}
+            .card h3 {{ font-size: 14px; color: #999; margin-bottom: 10px; }}
+            pre {{ background: #000; padding: 10px; border-radius: 4px; overflow-x: auto; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>📊 Analytics Dashboard</h1>
+                <a href="/dashboard/">← Back to Dashboard</a>
+            </div>
+            
+            <div class="grid">
+                <div class="section card">
+                    <h2>Threat Heatmap (24h)</h2>
+                    <pre>{json.dumps(heatmap.get('heatmap', {}), indent=2)[:500]}</pre>
+                </div>
+                
+                <div class="section card">
+                    <h2>Top Attacker Profiles</h2>
+                    <pre>{json.dumps(profiles[:5], indent=2)}</pre>
+                </div>
+                
+                <div class="section card">
+                    <h2>Command Patterns</h2>
+                    <pre>{json.dumps(patterns, indent=2)}</pre>
+                </div>
+                
+                <div class="section card">
+                    <h2>API Endpoints</h2>
+                    <ul>
+                        <li><a href="/dashboard/api/analytics/threat-heatmap">/api/analytics/threat-heatmap</a></li>
+                        <li><a href="/dashboard/api/analytics/attacker-profiles">/api/analytics/attacker-profiles</a></li>
+                        <li><a href="/dashboard/api/analytics/command-patterns">/api/analytics/command-patterns</a></li>
+                        <li><a href="/dashboard/api/analytics/ioc-summary">/api/analytics/ioc-summary</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
