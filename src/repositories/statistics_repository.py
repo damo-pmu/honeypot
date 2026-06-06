@@ -1,5 +1,5 @@
 """Repository layer for statistics - single source of truth aggregating from PostgreSQL"""
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta, timezone
 from typing import Dict, Any, List, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -20,7 +20,7 @@ class StatisticsRepository:
         total_commands = self.db.query(CommandDB).count()
         
         # Attacks in 24h
-        cutoff_24h = datetime.utcnow() - timedelta(hours=24)
+        cutoff_24h = datetime.now(timezone.utc) - timedelta(hours=24)
         attacks_24h = self.db.query(AttackDB).filter(
             AttackDB.timestamp >= cutoff_24h
         ).count()
@@ -55,7 +55,7 @@ class StatisticsRepository:
                 {"type": at.attack_type, "count": at.count}
                 for at in attack_types
             ],
-            "last_updated": datetime.utcnow().isoformat()
+            "last_updated": datetime.now(timezone.utc).isoformat()
         }
     
     def get_geoip_markers(self, limit: int = 100) -> List[Dict[str, Any]]:
@@ -85,7 +85,7 @@ class StatisticsRepository:
     
     def get_event_counts_by_type(self, hours: int = 24) -> Dict[str, Any]:
         """Get count of events by type for stats"""
-        cutoff = datetime.utcnow() - timedelta(hours=hours)
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
         
         attack_counts = self.db.query(
             AttackDB.attack_type,

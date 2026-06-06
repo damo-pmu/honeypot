@@ -49,6 +49,7 @@ curl http://localhost:8000/health
 | [SCORING.md](docs/SCORING.md) | Scoring + classification |
 | [SERVICES.md](docs/SERVICES.md) | Services métiers |
 | [WORKERS.md](docs/WORKERS.md) | Workers + response engine |
+| [HANDOVER.md](docs/HANDOVER.md) | Guide de reprise exact |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Guidelines contributeurs |
 
 ## 📊 Dashboard
@@ -56,7 +57,7 @@ curl http://localhost:8000/health
 URL : `http://honeypot.hiddenlabs.cc`
 
 ### Features
-- Monitoring temps réel (SSE)
+- Monitoring temps réel (WebSocket + fallback HTTP)
 - Statistiques dynamiques
 - Carte interactive
 - Filtres par type d'attaque

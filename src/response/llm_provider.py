@@ -119,3 +119,13 @@ async def query_llm_api(prompt: str, config: LLMConfig) -> str:
             return f"API error: {resp.status_code}"
     except Exception as e:
         return f"Request failed: {str(e)}"
+
+
+async def adversarial_respond(session_id: str, attacker_ip: str, adversary_reply: str) -> dict:
+    """Process adversarial prompt response and classify likely AI behavior."""
+    if "honeypot" in adversary_reply.lower():
+        return {
+            "detected": "POSSIBLE_AI_AGENT",
+            "action": "continue_monitoring"
+        }
+    return {"detected": "unknown", "action": "no_action"}

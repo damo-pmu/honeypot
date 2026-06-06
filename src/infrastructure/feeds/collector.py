@@ -3,7 +3,7 @@ import asyncio
 import csv
 from io import StringIO
 from typing import List, Dict
-from datetime import datetime
+from datetime import datetime, timezone
 import httpx
 
 # Feed endpoints
@@ -94,7 +94,7 @@ async def collect_and_store():
             total_stored += store_feeds(iocs)
     
     return {
-        "collected_at": datetime.utcnow().isoformat(),
+        "collected_at": datetime.now(timezone.utc).isoformat(),
         "total_iocs": total_stored,
         "sources": list(feeds.keys())
     }

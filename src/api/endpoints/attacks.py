@@ -1,6 +1,6 @@
 """Attack events logging endpoint - PostgreSQL integration with Prometheus metrics"""
 from fastapi import APIRouter, HTTPException, Depends
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from pydantic import BaseModel
 
@@ -61,7 +61,7 @@ def log_attack(attack: AttackLog, db: Session = Depends(get_db)):
         ioc_value=attack.ioc_value,
         ioc_type=attack.ioc_type,
         severity=attack.severity,
-        timestamp=datetime.utcnow()
+        timestamp=datetime.now(timezone.utc)
     )
     db.add(db_attack)
     db.commit()

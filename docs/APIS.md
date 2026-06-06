@@ -9,6 +9,8 @@ Tous endpoints utilisent :
 - Responses : Pydantic models
 - Security middleware : `AuditMiddleware` sur toutes les routes
 
+> Note : cette documentation est mise à jour au fur et à mesure de l’avancement. Les sections dashboard v3 et analytics sont en cours d’alignement avec le code actuel.
+
 ---
 
 ## Attackers API (`/attackers`)
@@ -204,33 +206,51 @@ UNKNOWN → cisco running_config
 
 ---
 
-## Dashboard API (`/dashboard/api`)
+## Dashboard API (`/dashboard`)
 
-### Endpoints
+### User-facing routes
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/stats` | Stats JSON agrégées |
-| GET | `/api/live-feed` | Events authentifié |
-| GET | `/api/public/live-feed` | Events public |
-| GET | `/api/sessions` | Sessions formatées |
-| GET | `/api/sessions/{id}` | Détail session |
-| GET | `/api/timeline/{id}` | Timeline session |
-| GET | `/api/replay/{id}` | Replay session |
-| GET | `/api/map` | IPs pour carte |
+| GET | `/dashboard/` | Dashboard UI home |
+| GET | `/dashboard/login` | Dashboard login page |
+| POST | `/dashboard/login` | Submit dashboard password |
+| GET | `/dashboard/logout` | Logout from dashboard |
 
-### Auth
-- Cookie `dashboard_auth` HttpOnly SameSite=Strict
-- Password via `DASHBOARD_PASSWORD`
+### API Endpoints
+| Method | Path | Description | Auth |
+|--------|------|-------------|------|
+| GET | `/dashboard/api/stats` | Stats JSON agrégées | Oui |
+| GET | `/dashboard/api/live-feed` | Flux d’événements récents | Oui |
+| GET | `/dashboard/api/analytics/threat-heatmap` | Heatmap des menaces | Oui |
+| GET | `/dashboard/api/analytics/attacker-profiles` | Profils attaquants | Oui |
+| GET | `/dashboard/api/analytics/command-patterns` | Patterns de commandes | Oui |
+| GET | `/dashboard/api/analytics/ioc-summary` | Résumé IOC | Oui |
+| GET | `/dashboard/api/analytics/payload-analysis` | Analyse payload | Oui |
+| GET | `/dashboard/api/analytics/attack-taxonomy` | Taxonomie des attaques | Oui |
+| GET | `/dashboard/api/analytics/correlations` | Corrélations d’attaques | Oui |
+| GET | `/dashboard/api/export/threat-report` | Export JSON de report | Oui |
+| GET | `/dashboard/api/export/attackers` | Export CSV des attaquants | Oui |
+| GET | `/dashboard/api/search/sessions` | Recherche sessions | Oui |
+| GET | `/dashboard/api/search/commands` | Recherche commands | Oui |
+| GET | `/dashboard/ws/live` | WebSocket live feed | Oui |
+| GET | `/dashboard/api/health` | Health check | Non |
+| GET | `/dashboard/api/meta/endpoints` | Endpoints discovery | Non |
 
-### SSE Flow
+### Notes
+- L’UI du dashboard est servie par FastAPI et protégée par cookie de session.
+- Tous les endpoints `analytics`, `export`, `search`, `stats`, `live-feed` et WebSocket sont protégés par authentification.
+- Le dashboard utilise un cookie de session `dash_session` (HttpOnly, SameSite=Strict).
+- Password via `DASHBOARD_PASSWORD`.
+
+### Real-time flow
 
 ```mermaid
 flowchart LR
-    A[Browser] --> B[dashboard stream]
-    B --> C[Server-Sent Events]
-    C --> D{New event?}
-    D -->|yes| E[Send to client]
-    D -->|no| F[Keep-alive ping]
+    A[Browser] --> B[WebSocket /dashboard/ws/live]
+    B --> C[Server]
+    C --> D{Ping ?}
+    D -->|yes| E[Repondre pong]
+    D -->|no| F[Maintenir la connexion]
     E --> A
     F --> A
 ```
@@ -265,7 +285,7 @@ Routes utilisées par le worker Cowrie, pas exposées publiquement.
 | POST | `/internal/sessions` | Worker → création session |
 | POST | `/internal/events` | Worker → logging événement |
 | POST | `/internal/sessions/{id}/end` | Worker → fin session |
-| GET | `/stream` | SSE endpoint (SSETransport) |
+| GET | `/stream` | Legacy SSE endpoint (deprecated). Use WebSocket `/dashboard/ws/live` or internal POST events `/dashboard/internal/events` |
 | POST | `/dashboard/internal/events` | Events (nouveau) |
 | POST | `/dashboard/internal/sessions` | Sessions (nouveau) |
 

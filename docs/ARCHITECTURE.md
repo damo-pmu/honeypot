@@ -32,7 +32,7 @@
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                        Dashboard                          │
-│              (HTML + SSE) http://localhost:8000           │
+│        (HTML + WebSocket + HTTP fallback) http://localhost:8000        │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -83,17 +83,33 @@
 - `GET /sessions` - List sessions
 - `GET /attackers` - List attackers
 - `GET /commands` - List commands
-- `GET /dashboard/*` - Dashboard UI/API
+- `GET /dashboard/` - Dashboard UI home
+- `GET /dashboard/login` - Dashboard login page
+- `GET /dashboard/logout` - Dashboard logout
+- `GET /dashboard/api/stats` - Dashboard stats (auth required)
+- `GET /dashboard/api/live-feed` - Dashboard live feed (auth required)
+- `GET /dashboard/ws/live` - Dashboard WebSocket live feed (auth required)
 - `GET /analytics/*` - Analytics queries
 - `GET /metrics` - Prometheus
 
 ## Sécurité
 
+### CORS Policy (Phase 2)
+- **Default Origins**: built from `HONEYPOT_HOSTNAME` for frontend and monitoring ports, e.g. `http://<hostname>:3000`
+- **Configuration**: Via `HONEYPOT_HOSTNAME` + `CORS_ALLOWED_ORIGINS` env vars (comma-separated list)
+- **Production**: Must configure specific frontend/dashboard origins only (NO wildcard `*`)
+- **Rationale**: Prevents unauthorized cross-origin API access; Grafana + Prometheus access configured separately via reverse proxy
+- **Methods**: Limited to GET, POST, PUT, DELETE (no CONNECT, TRACE, OPTIONS indiscriminately)
+- **Headers**: Content-Type, Authorization only (no wildcard `*`)
+- **Credentials**: Enabled for cookie-based auth (`dash_session`)
+
 ### Configuration
 - Ports localhost uniquement (reverse proxy Apache)
 - `DASHBOARD_PASSWORD` pour auth dashboard
+- Cookie de session `dash_session` utilisé pour l’authentification du dashboard
 - LLM local uniquement (pas d'API externe)
 - Variables d'environnement depuis `.env`
+- `CORS_ALLOWED_ORIGINS` for restricting cross-origin requests (Phase 2)
 
 ### Fail2ban integration
 ```bash

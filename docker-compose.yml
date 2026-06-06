@@ -12,7 +12,10 @@ services:
       - redis
     environment:
       - DASHBOARD_PASS=${DASHBOARD_PASS:-demo}
-      - OPENROUTER_API_KEY=${API_KEY_OPENROUTER:-demo}
+      - HONEYPOT_HOSTNAME=${HONEYPOT_HOSTNAME:-localhost}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5000,http://localhost:9090}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - LOCAL_LLM_MODEL=${LOCAL_LLM_MODEL:-}
       - DATABASE_URL=postgresql://honeypot:${PG_PASS:-demo}@${DB_HOST:-postgres}:${DB_PORT:-5432}/${DB_NAME:-honeypot}
       - REDIS_URL=redis://${REDIS_HOST:-redis}:${REDIS_PORT:-6379}
     volumes:

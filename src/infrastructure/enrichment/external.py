@@ -1,4 +1,8 @@
-"""External IOC enrichment providers"""
+"""External IOC enrichment providers.
+
+This module supports multiple enrichment providers and local caching.
+Rate limits are documented as 4 requests/minute per provider by default.
+"""
 import os
 from typing import Optional, Dict
 import httpx
@@ -6,6 +10,23 @@ import json
 
 VT_API_KEY = os.getenv("VT_API_KEY", "")
 ABUSEIPDB_API_KEY = os.getenv("ABUSEIPDB_API_KEY", "")
+from dataclasses import dataclass
+from typing import Optional
+
+
+@dataclass
+class IOC:
+    """IOC value object used by enrichment providers and tests
+
+    Fields align with tests expectations: `source` defaults to 'scan',
+    `confidence` defaults to 1.0.
+    """
+    ioc_type: str
+    value: str
+    confidence: float = 1.0
+    source: str = "scan"
+    context: Optional[str] = None
+    source_event_id: Optional[str] = None
 
 
 async def lookup_virustotal(ioc_value: str, ioc_type: str) -> Dict:
@@ -174,7 +195,13 @@ async def enrich_ioc(ioc_value: str, ioc_type: str, use_cache: bool = True) -> D
             await cache.set_cached("urlhaus", ioc_value, uh_result)
         results["urlhaus"] = uh_result
     else:
-        results["error"] = f"Unsupported type: {ioc_type}"
+        return {
+            "ioc": ioc_value,
+            "type": ioc_type,
+            "error": f"Unsupported type: {ioc_type}",
+            "enrichments": {},
+            "cached": False
+        }
     
     return {
         "ioc": ioc_value,

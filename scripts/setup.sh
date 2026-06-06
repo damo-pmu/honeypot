@@ -61,10 +61,12 @@ echo "[Environment] Setting up .env..."
 
 # Try to fetch variables from GitHub
 declare -A GH_VARS
-VARS=("API_KEY_OPENROUTER" "PG_PASS" "GRAFANA_PASS" "DASHBOARD_PASS")
+# Include CORS and hostname so they can be provided from GH variables when available
+VARS=("API_KEY_OPENROUTER" "PG_PASS" "GRAFANA_PASS" "DASHBOARD_PASS" "CORS_ALLOWED_ORIGINS" "HONEYPOT_HOSTNAME")
 FETCHED_VARS=()
 
 for var in "${VARS[@]}"; do
+    # Query GH variables; if gh CLI not authenticated this will silently fail
     value=$(gh variable list --json name,value --jq ".[] | select(.name == \"$var\").value" 2>/dev/null || echo "")
     if [ -n "$value" ]; then
         GH_VARS[$var]="$value"
@@ -86,16 +88,25 @@ else
     for var in "${FETCHED_VARS[@]}"; do
         # Map to correct .env key names (must match .env.example)
         case $var in
-            API_KEY_OPENROUTER) env_key="API_KEY_OPENROUTER" ;;
+            API_KEY_OPENROUTER) env_key="OPENROUTER_API_KEY" ;;
             PG_PASS) env_key="PG_PASS" ;;
             GRAFANA_PASS) env_key="GRAFANA_PASS" ;;
             DASHBOARD_PASS) env_key="DASHBOARD_PASS" ;;
+            CORS_ALLOWED_ORIGINS) env_key="CORS_ALLOWED_ORIGINS" ;;
+            HONEYPOT_HOSTNAME) env_key="HONEYPOT_HOSTNAME" ;;
+            *) env_key="$var" ;;
         esac
-        
-        # Update .env with fetched value
+
+        # Update .env with fetched value if key exists in template
         if grep -q "^$env_key=" .env 2>/dev/null; then
-            sed -i "s|^$env_key=.*|$env_key=${GH_VARS[$var]}|" .env
+            # Escape slashes to avoid sed issues
+            safe_value=$(printf '%s' "${GH_VARS[$var]}" | sed 's|\\|\\\\|g; s|/|\\/|g')
+            sed -i "s|^$env_key=.*|$env_key=$safe_value|" .env
             log_info "Updated $env_key in .env"
+        else
+            # Append unknown keys to .env for completeness
+            echo "$env_key=${GH_VARS[$var]}" >> .env
+            log_info "Appended $env_key to .env"
         fi
     done
 fi
@@ -117,15 +128,20 @@ import_dashboard() {
         GRAFANA_PASS=$(grep '^GRAFANA_PASS=' .env | cut -d'=' -f2 || echo "demo")
     fi
     
+    local grafana_host="localhost"
+    if [ -f .env ]; then
+        grafana_host=$(grep '^HONEYPOT_HOSTNAME=' .env | cut -d'=' -f2 || echo "localhost")
+    fi
+
     # Import monitoring dashboard
     curl -s -u "admin:${GRAFANA_PASS}" \
-        -X POST "http://localhost:3000/api/dashboards/db" \
+        -X POST "http://${grafana_host}:3000/api/dashboards/db" \
         -H 'Content-Type: application/json' \
         -d @grafana/dashboard-monitoring.json > /dev/null 2>&1 && log_info "Monitoring dashboard imported" || log_warn "Monitoring dashboard import failed"
     
     # Import investigation dashboard  
     curl -s -u "admin:${GRAFANA_PASS}" \
-        -X POST "http://localhost:3000/api/dashboards/db" \
+        -X POST "http://${grafana_host}:3000/api/dashboards/db" \
         -H 'Content-Type: application/json' \
         -d @grafana/dashboard-investigation.json > /dev/null 2>&1 && log_info "Investigation dashboard imported" || log_warn "Investigation dashboard import failed"
 }
@@ -145,10 +161,16 @@ fi
 echo ""
 log_info "Setup complete!"
 echo ""
+if [ -f .env ]; then
+    HONEYPOT_HOSTNAME=$(grep '^HONEYPOT_HOSTNAME=' .env | cut -d'=' -f2 || echo "localhost")
+else
+    HONEYPOT_HOSTNAME=localhost
+fi
+
 echo "Endpoints:"
-echo "  API:         http://localhost:${API_PORT:-8000}"
-echo "  Dashboard:   http://localhost:${API_PORT:-8000}/dashboard/"
-echo "  Cowrie SSH:  localhost:${SSH_PORT:-22}"
-echo "  Grafana:     http://localhost:${GRAFANA_PORT:-3000} (use --full)"
+echo "  API:         http://${HONEYPOT_HOSTNAME}:${API_PORT:-8000}"
+echo "  Dashboard:   http://${HONEYPOT_HOSTNAME}:${API_PORT:-8000}/dashboard/"
+echo "  Cowrie SSH:  ${HONEYPOT_HOSTNAME}:${SSH_PORT:-22}"
+echo "  Grafana:     http://${HONEYPOT_HOSTNAME}:${GRAFANA_PORT:-3000} (use --full)"
 echo ""
-echo "Dashboard password: ${DASHBOARD_PASSWORD:-demo} (check .env)"
+echo "Dashboard password: ${DASHBOARD_PASS:-demo} (check .env)"

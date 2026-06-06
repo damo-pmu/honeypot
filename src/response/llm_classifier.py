@@ -116,7 +116,11 @@ def _llm_classify(commands: List[str]) -> ThreatAnalysis:
     model_path = os.getenv("LOCAL_LLM_MODEL", "/models/gpt4all-lora-quantized.bin")
     
     if not os.path.exists(model_path):
-        return _rule_based_classify(commands)
+        return ThreatAnalysis(
+            threat_class=ThreatClass.UNKNOWN,
+            confidence=0.3,
+            indicators=["fallback", "llm_error_fallback"]
+        )
     
     try:
         # Try LangChain with local model
@@ -135,5 +139,5 @@ def _llm_classify(commands: List[str]) -> ThreatAnalysis:
         return ThreatAnalysis(
             threat_class=ThreatClass.UNKNOWN,
             confidence=0.3,
-            indicators=["llm_error_fallback"]
+            indicators=["fallback", "llm_error_fallback"]
         )

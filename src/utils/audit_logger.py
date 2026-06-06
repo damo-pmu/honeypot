@@ -3,7 +3,7 @@ JSON format for easy parsing and analysis
 """
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from pathlib import Path
 import os
@@ -15,7 +15,7 @@ AUDIT_LOG_PATH = os.getenv("AUDIT_LOG_PATH", "/tmp/honeypot_audit.log")
 class AuditFormatter(logging.Formatter):
     def format(self, record):
         log_entry = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),

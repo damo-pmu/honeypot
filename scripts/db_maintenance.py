@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Database maintenance: indexes optimization and retention policy"""
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta, timezone
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
@@ -49,7 +49,7 @@ def create_indexes():
 def update_timestamps():
     """Batch update updated_at columns"""
     with engine.connect() as conn:
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         
         conn.execute(text("""
             UPDATE attackers SET updated_at = :now 
@@ -68,8 +68,8 @@ def update_timestamps():
 def apply_retention():
     """Apply data retention policy - delete old records"""
     with engine.connect() as conn:
-        cutoff_attacks = datetime.utcnow() - timedelta(days=RETENTION_ATTACKS)
-        cutoff_sessions = datetime.utcnow() - timedelta(days=RETENTION_SESSIONS)
+        cutoff_attacks = datetime.now(timezone.utc) - timedelta(days=RETENTION_ATTACKS)
+        cutoff_sessions = datetime.now(timezone.utc) - timedelta(days=RETENTION_SESSIONS)
         
         # Purge old attacks
         result = conn.execute(text("""

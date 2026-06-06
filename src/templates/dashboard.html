@@ -1,180 +1,52 @@
-{# SOC Dashboard - Threat Hunting Interface #}
-<!DOCTYPE html>
-<html lang="en" class="dark">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Honeypot Security Operations Center Dashboard">
-    <base href="/" />
-    
-    <title>🍯 Honeypot - SOC Dashboard</title>
-    
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        'soc-bg': '#0a0a0a',
-                        'soc-card': '#111111',
-                        'soc-border': '#333333',
-                        'soc-accent': '#00ff88',
-                        'soc-danger': '#ff4444',
-                        'soc-warning': '#ffaa00'
-                    }
-                }
-            }
-        }
-    </script>
-    
-    <!-- HTMX for partial rendering -->
-    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
-    
-    <!-- Alpine.js for reactivity -->
-    <script defer src="https://unpkg.com/alpinejs@3.13.0/dist/cdn.min.js"></script>
-    
-    <!-- Leaflet for world map -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    
-    <!-- Custom CSS -->
-    <link rel="stylesheet" href="/static/css/dashboard.css">
-</head>
+{% extends 'base.html' %}
 
-<body class="bg-soc-bg text-gray-200 min-h-screen" 
-      x-data="dashboardState()" 
-      x-init="init()"
-      data-initial-stats="{{ (stats | tojson | safe) if stats else '{}' }}">
-    
-    {# Navigation Bar #}
-    <nav class="border-b border-soc-border bg-soc-bg/80 backdrop-blur-sm sticky top-0 z-50">
-        <div class="container mx-auto px-4 py-3 flex items-center justify-between">
-            <div class="flex items-center space-x-4">
-                <h1 class="text-xl font-bold text-soc-accent">🍯 Honeypot SOC</h1>
-                <span class="live-indicator" :class="{'animate-pulse': connected, 'opacity-30': !connected}"></span>
-                <span class="text-sm" :class="connected ? 'text-soc-accent' : 'text-gray-500'">LIVE SSE</span>
-            </div>
-            
-            <div class="flex items-center space-x-2">
-                <a href="/dashboard/" class="px-3 py-1 text-sm bg-soc-card border border-soc-border rounded hover:bg-soc-accent hover:text-black transition">Dashboard</a>
-                <a href="/dashboard/logout" class="px-3 py-1 text-sm bg-red-900/50 border border-red-700 rounded hover:bg-red-700 transition">Logout</a>
-            </div>
-        </div>
-    </nav>
+{% block title %}Honeypot SOC Dashboard{% endblock %}
 
-    {# Main Layout #}
-    <div class="container mx-auto px-4 py-6">
-        
-        {# Stats Row - KPI Cards - Full Width #}
-        <section class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6" id="stats">
-            <div class="stat-card bg-soc-card border border-soc-border rounded-lg p-4 text-center">
-                <div class="stat-value text-2xl font-bold text-soc-accent" x-text="stats.total_events || 0">-</div>
-                <div class="stat-label text-xs text-gray-500">Total Events</div>
-            </div>
-            
-            <div class="stat-card bg-soc-card border border-soc-border rounded-lg p-4 text-center">
-                <div class="stat-value text-2xl font-bold text-blue-400" x-text="stats.attacks_24h || 0">-</div>
-                <div class="stat-label text-xs text-gray-500">Attacks (24h)</div>
-            </div>
-            
-            <div class="stat-card bg-soc-card border border-soc-border rounded-lg p-4 text-center">
-                <div class="stat-value text-2xl font-bold text-yellow-400" x-text="stats.unique_ips_24h || 0">-</div>
-                <div class="stat-label text-xs text-gray-500">Unique IPs</div>
-            </div>
-            
-            <div class="stat-card bg-soc-card border border-soc-border rounded-lg p-4 text-center">
-                <div class="stat-value text-2xl font-bold text-purple-400" x-text="stats.active_sessions || 0">-</div>
-                <div class="stat-label text-xs text-gray-500">Active Sessions</div>
-            </div>
-        </section>
-
-        {# World Map - Centered Full Width #}
-        <section class="bg-soc-card border border-soc-border rounded-lg p-4 mb-6 max-w-4xl mx-auto">
-            <h2 class="text-sm font-semibold text-gray-400 mb-3">🌍 Attack Origins</h2>
-            <div id="map" class="rounded mx-auto" style="height: 300px; max-width: 100%;"></div>
-        </section>
-
-        {# Filters - Full Width Like Stats #}
-        <section class="bg-soc-card border border-soc-border rounded-lg p-3 mb-6">
-            <span class="text-xs text-gray-500 mr-2">Filter:</span>
-            <template x-for="filter in filters">
-                <button @click="setFilter(filter)" 
-                        :class="{'bg-soc-accent text-black': activeFilter === filter, 'bg-soc-card border border-soc-border': activeFilter !== filter}"
-                        class="px-2 py-1 text-xs rounded mr-1 hover:bg-soc-accent hover:text-black transition"
-                        x-text="filter.toUpperCase()"></button>
-            </template>
-        </section>
-
-        {# Events + Details - Full Width Grid #}
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            
-            {# Events Feed - Takes 2/3 width #}
-            <div class="lg:col-span-2 space-y-4">
-                <section id="events" class="space-y-2 max-h-[500px] overflow-y-auto pr-2">
-                    <div class="text-center py-8 text-gray-500">Loading events...</div>
-                </section>
-            </div>
-            
-            {# Session Detail Panel - 1/3 on desktop, full width on mobile #}
-            <div class="lg:col-span-1">
-                {# Placeholder when no session selected #}
-                <section x-show="!selectedSession" x-cloak class="bg-soc-card border border-soc-border rounded-lg p-4 h-full min-h-[200px] flex items-center justify-center">
-                    <div class="text-center text-gray-500">
-                        <div class="text-3xl mb-2">🔍</div>
-                        <div class="text-xs">Sélectionnez une session<br>pour voir les détails</div>
-                    </div>
-                </section>
-                {# Session Detail Panel #}
-                <section x-show="selectedSession" x-cloak class="bg-soc-card border border-soc-border rounded-lg p-4">
-                    <div class="flex items-center justify-between mb-3">
-                        <h2 class="text-sm font-semibold text-gray-400">🔍 Session Inspector</h2>
-                        <button @click="selectedSession = null" class="text-xs text-gray-500 hover:text-white">&times;</button>
-                    </div>
-                    
-                    <template x-if="selectedSession">
-                        <div class="space-y-4 text-sm">
-                            {# Session Info #}
-                            <div>
-                                <span class="text-gray-500">IP:</span>
-                                <span class="ml-2 font-mono" x-text="selectedSession.attacker_ip"></span>
-                            </div>
-                            <div>
-                                <span class="text-gray-500">Protocol:</span>
-                                <span class="ml-2" x-text="selectedSession.protocol"></span>
-                            </div>
-                            
-                            {# Command Terminal #}
-                            <div>
-                                <h3 class="text-xs text-gray-500 mb-2">💻 Commands</h3>
-                                <div class="terminal-bg font-mono text-xs p-3 rounded max-h-[200px] overflow-y-auto">
-                                    <template x-for="cmd in selectedSession.timeline?.filter(e => e.type === 'command')">
-                                        <div class="mb-1" :class="{'text-soc-danger': cmd.data.is_flagged}">
-                                            <span class="text-gray-600">$</span>
-                                            <span x-text="cmd.data.command"></span>
-                                        </div>
-                                    </template>
-                                </div>
-                            </div>
-                            
-                            {# IOCs #}
-                            <div>
-                                <h3 class="text-xs text-gray-500 mb-2">🧬 IOCs Detected</h3>
-                                <div class="flex flex-wrap gap-1">
-                                    <template x-for="ioc in selectedSession.iocs">
-                                        <span class="px-2 py-0.5 bg-red-900/30 border border-red-700 rounded text-xs" x-text="ioc"></span>
-                                    </template>
-                                </div>
-                            </div>
-                        </div>
-                    </template>
-                </section>
-            </div>
-        </div>
+{% block content %}
+<section class="dashboard-header">
+    <div>
+        <h1 class="dashboard-title">Honeypot SOC Dashboard</h1>
+        <p class="dashboard-meta">Vue d’ensemble en temps réel pour les analystes, avec flux et export de rapports.</p>
     </div>
+    <div class="dashboard-meta">
+        <a href="javascript:location.reload()" class="secondary-button" id="refresh-button">Refresh</a>
+        <a href="/dashboard/api/export/threat-report" class="action-button">Exporter JSON</a>
+        <a href="/dashboard/logout" class="secondary-button">Logout</a>
+    </div>
+</section>
 
-    {# Custom JS #}
-    <script src="/static/js/dashboard.js"></script>
-</body>
-</html>
+<div class="stats-grid">
+    <article class="card">
+        <p class="metric-label">Active Sessions</p>
+        <p class="metric-value">{{ stats.active_sessions or 0 }}</p>
+    </article>
+    <article class="card">
+        <p class="metric-label">Unique Attackers</p>
+        <p class="metric-value">{{ stats.unique_attackers or 0 }}</p>
+    </article>
+    <article class="card">
+        <p class="metric-label">High Risk</p>
+        <p class="metric-value">{{ stats.high_threat_count or 0 }}</p>
+    </article>
+    <article class="card">
+        <p class="metric-label">IOCs Extracted</p>
+        <p class="metric-value">{{ stats.ioc_count or 0 }}</p>
+    </article>
+</div>
+
+<section class="panel">
+    <div class="panel-header">
+        <h2>Recent Activity</h2>
+        <p class="dashboard-meta" id="live-feed-fallback">Flux temps réel en cours...</p>
+    </div>
+    <div id="live-feed" class="live-feed">Chargement...</div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    window.dashboardConfig = {
+        feedPath: '/dashboard/api/live-feed?limit=12'
+    };
+</script>
+{% endblock %}

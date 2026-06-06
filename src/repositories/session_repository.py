@@ -1,5 +1,5 @@
 """Repository layer for honeypot sessions - single source of truth for PostgreSQL queries"""
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta, timezone
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, func, or_
@@ -37,9 +37,9 @@ class SessionRepository:
         
         if session.start_time:
             session.duration_seconds = int(
-                (datetime.utcnow() - session.start_time).total_seconds()
+                (datetime.now(timezone.utc) - session.start_time).total_seconds()
             )
-        session.end_time = datetime.utcnow()
+        session.end_time = datetime.now(timezone.utc)
         self.db.commit()
         return session
     
@@ -149,14 +149,14 @@ class SessionRepository:
     
     def count_total(self, hours: int = 24) -> int:
         """Count sessions in period"""
-        cutoff = datetime.utcnow() - timedelta(hours=hours)
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
         return self.db.query(SessionDB).filter(
             SessionDB.start_time >= cutoff
         ).count()
     
     def delete_old(self, days: int = 90) -> int:
         """Delete sessions older than specified days - for retention"""
-        cutoff = datetime.utcnow() - timedelta(days=days)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
         deleted = self.db.query(SessionDB).filter(
             SessionDB.start_time < cutoff
         ).delete()

@@ -1,6 +1,8 @@
 """SQLAlchemy database configuration and models - PostgreSQL integration"""
 import os
 from sqlalchemy import create_engine, Column, String, Integer, Boolean, DateTime, Text, ForeignKey, JSON, DECIMAL, Index
+from sqlalchemy.engine import Engine
+from sqlalchemy.pool import StaticPool
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from datetime import datetime
@@ -16,7 +18,15 @@ DB_NAME = os.getenv("DB_NAME", "honeypot")
 DATABASE_URL = os.getenv("DATABASE_URL", f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}")
 
 # Create engine with connection pooling
-engine = create_engine(DATABASE_URL, pool_pre_ping=True, pool_size=10, max_overflow=20)
+engine_kwargs = {"pool_pre_ping": True}
+if DATABASE_URL.startswith("sqlite://"):
+    engine_kwargs["connect_args"] = {"check_same_thread": False}
+    engine_kwargs["poolclass"] = StaticPool
+else:
+    engine_kwargs["pool_size"] = 10
+    engine_kwargs["max_overflow"] = 20
+
+engine = create_engine(DATABASE_URL, **engine_kwargs)
 
 # Session factory
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

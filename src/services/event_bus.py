@@ -2,7 +2,7 @@
 import asyncio
 from typing import Dict, List, Callable, Any
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 
 
@@ -52,7 +52,7 @@ class RealtimeEventBus:
         event = Event(
             type=event_type,
             event_id=str(uuid.uuid4()),
-            timestamp=datetime.utcnow().isoformat(),
+            timestamp=datetime.now(timezone.utc).isoformat(),
             reference_id=reference_id,
             session_id=session_id
         )

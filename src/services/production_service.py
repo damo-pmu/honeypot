@@ -1,7 +1,7 @@
 """Production Readiness - Celery, Redis, Background Jobs, Retention"""
 import os
 from typing import Dict, Any, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta, timezone
 
 # Async task queue (Celery optional)
 try:
@@ -59,7 +59,7 @@ class RetentionManager:
     
     def _cleanup_table(self, tablename: str, days: int) -> int:
         """Delete old records from table"""
-        cutoff = datetime.utcnow() - timedelta(days=days)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
         deleted = self.db.execute(f"DELETE FROM {tablename} WHERE created_at < %s", (cutoff,)).rowcount
         self.db.commit()
         return deleted

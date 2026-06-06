@@ -3,7 +3,7 @@ import os
 import time
 import hashlib
 from typing import Optional, Dict, Any, List
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta, timezone
 from functools import wraps
 
 # Try Redis for rate limiting
@@ -99,7 +99,7 @@ class AuditLogger:
     def log(self, action: str, user: str, ip: str, details: Dict = None):
         """Log audit event"""
         # In production, write to dedicated audit table
-        print(f"[AUDIT] {datetime.utcnow().isoformat()} {user}@{ip} {action} {details}")
+        print(f"[AUDIT] {datetime.now(timezone.utc).isoformat()} {user}@{ip} {action} {details}")
         
         if self.db:
             from src.core.database import AuditLogDB

@@ -38,7 +38,7 @@
 
 ## Limitations
 
-⚠️ **Dashboard SSE** : tests manquants  
+⚠️ **Dashboard real-time (WebSocket + HTTP fallback)** : tests manquants  
 ⚠️ **Old docs** : F1-F8 obsolètes à nettoyer  
 ⚠️ **GeoIP fallback** : pas de backup si ipapi.co down  
 ⚠️ **No async** : worker synchrone (blocking)  
@@ -46,7 +46,7 @@
 ## Prochaines étapes
 
 1. **Nettoyer docs/** - Supprimer F1-F8 obsolètes
-2. **Tests SSE** - Ajouter couverture dashboard/stream
+2. **Tests WebSocket + HTTP fallback** - Ajouter couverture dashboard/stream
 3. **Backup geoip** - Implémenter fallback MaxMind
 4. **Scoring documenté** - Créer `docs/SCORING.md`
 

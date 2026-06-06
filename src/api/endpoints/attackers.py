@@ -3,7 +3,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from typing import List
 from pydantic import BaseModel
 from enum import Enum
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 from src.core.database import get_db, AttackerDB
@@ -53,14 +53,14 @@ def create_attacker(attacker: AttackerCreate, db: Session = Depends(get_db)):
     db_attacker = db.query(AttackerDB).filter(AttackerDB.ip == attacker.ip).first()
     
     if db_attacker:
-        db_attacker.last_seen = datetime.utcnow()
+        db_attacker.last_seen = datetime.now(timezone.utc)
         db_attacker.threat_score = max(db_attacker.threat_score, attacker.threat_score)
         db.commit()
         db.refresh(db_attacker)
     else:
         db_attacker = AttackerDB(
             ip=attacker.ip,
-            first_seen=attacker.first_seen or datetime.utcnow(),
+            first_seen=attacker.first_seen or datetime.now(timezone.utc),
             threat_score=attacker.threat_score,
             classification=attacker.classification.value
         )

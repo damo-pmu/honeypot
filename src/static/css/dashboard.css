@@ -1,96 +1,234 @@
-/* SOC Dashboard - Custom Styles (Tailwind extensions) */
 
-/* Terminal styling */
-.terminal-bg {
-    background: #000000;
-    border: 1px solid #111111;
+:root {
+    color-scheme: dark;
+    color: #e5efff;
+    background: #04111d;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    line-height: 1.5;
 }
 
-/* Scrollbar dark theme */
-.overflow-y-auto::-webkit-scrollbar {
-    width: 8px;
+* {
+    box-sizing: border-box;
 }
 
-.overflow-y-auto::-webkit-scrollbar-track {
-    background: #111111;
+html, body {
+    margin: 0;
+    min-height: 100%;
 }
 
-.overflow-y-auto::-webkit-scrollbar-thumb {
-    background: #333333;
-    border-radius: 4px;
+body {
+    background: radial-gradient(circle at top left, rgba(81, 255, 154, 0.12), transparent 24%),
+                radial-gradient(circle at bottom right, rgba(74, 123, 255, 0.12), transparent 28%),
+                #04111d;
 }
 
-.overflow-y-auto::-webkit-scrollbar-thumb:hover {
-    background: #00ff88;
+.app-shell {
+    width: min(1280px, calc(100% - 32px));
+    margin: 0 auto;
+    padding: 28px 0 48px;
 }
 
-/* Live indicator pulse animation */
-@keyframes pulse {
-    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(0, 255, 136, 0.7); }
-    50% { opacity: 0.5; box-shadow: 0 0 0 4px rgba(0, 255, 136, 0); }
+.login-shell {
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 20px;
 }
 
-.live-indicator {
-    display: inline-block;
-    width: 10px;
-    height: 10px;
-    background: #00ff88;
-    border-radius: 50%;
-    animation: pulse 2s infinite;
+.login-card,
+.card,
+.panel {
+    background: rgba(8, 14, 24, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 22px;
+    box-shadow: 0 28px 70px rgba(0, 0, 0, 0.2);
 }
 
-/* Event card styling */
-.event-card {
-    background: #111111;
-    border: 1px solid #333333;
-    border-radius: 8px;
-    padding: 12px;
-    margin-bottom: 8px;
-    transition: border-color 0.2s;
+.login-card {
+    width: min(420px, 100%);
+    padding: 36px 32px;
+}
+
+.login-card h1 {
+    margin: 0 0 18px;
+    font-size: 2rem;
+    color: #7ff7b0;
+}
+
+.login-card label {
+    display: block;
+    margin-bottom: 10px;
+    color: #8da6c3;
+    font-size: 0.95rem;
+}
+
+.login-card input {
+    width: 100%;
+    padding: 14px 16px;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(12, 20, 34, 0.96);
+    color: #f4f8ff;
+    font-size: 1rem;
+}
+
+.login-card button,
+.action-button,
+.secondary-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 14px 18px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    font-weight: 700;
     cursor: pointer;
+    transition: transform 0.18s ease, opacity 0.18s ease, background 0.18s ease;
 }
 
-.event-card:hover {
-    border-color: #00ff88;
+.login-card button {
+    width: 100%;
+    border-color: transparent;
+    background: linear-gradient(135deg, #5efc98 0%, #1bb18b 100%);
+    color: #051117;
 }
 
-/* Severity badges */
-.severity-low { background: #00ff88; color: #000; }
-.severity-medium { background: #ffaa00; color: #000; }
-.severity-high { background: #ff6600; color: #fff; }
-.severity-critical { background: #ff4444; color: #fff; }
-
-/* Transition for Alpine x-cloak */
-[x-cloak] { display: none; }
-
-/* Leaflet map dark theme */
-.leaflet-container {
-    background: #0a0a0a;
-    color: #e0e0e0;
+.login-card button:hover,
+.action-button:hover,
+.secondary-button:hover {
+    transform: translateY(-1px);
+    opacity: 0.95;
 }
 
-#map {
-    min-height: 300px;
+.login-card .error {
+    margin-top: 16px;
+    padding: 14px 16px;
+    border-radius: 16px;
+    background: rgba(255, 89, 89, 0.12);
+    color: #ffb0b0;
+    font-size: 0.95rem;
 }
 
-.leaflet-popup-content {
-    color: #e0e0e0;
+.dashboard-header,
+.dashboard-meta {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    justify-content: space-between;
 }
 
-.leaflet-popup-content-wrapper {
-    background: #111111;
-    border: 1px solid #333333;
+.dashboard-header {
+    margin-bottom: 30px;
+    flex-wrap: wrap;
 }
 
-/* Flagged command highlighting */
-.command-flagged {
-    color: #ff4444;
-    text-shadow: 0 0 2px rgba(255, 68, 68, 0.5);
+.dashboard-title {
+    margin: 0;
+    font-size: clamp(2rem, 3vw, 2.6rem);
+    letter-spacing: -0.03em;
 }
 
-/* Map highlight effect on marker click */
-.map-highlight {
-    box-shadow: 0 0 15px 3px #00ff88 !important;
-    transition: box-shadow 0.3s;
-    z-index: 10;
+.dashboard-meta {
+    flex-wrap: wrap;
+}
+
+.action-button {
+    background: #50ff9a;
+    color: #041114;
+}
+
+.secondary-button {
+    background: rgba(255, 255, 255, 0.06);
+    color: #dbe8ff;
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 20px;
+    margin-bottom: 28px;
+}
+
+.card {
+    padding: 24px;
+}
+
+.metric-label {
+    margin: 0 0 10px;
+    font-size: 0.82rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #94abc7;
+}
+
+.metric-value {
+    margin: 0;
+    font-size: 2.35rem;
+    color: #7ef7af;
+    font-weight: 800;
+}
+
+.panel {
+    padding: 24px;
+}
+
+.panel h2 {
+    margin: 0 0 14px;
+    color: #d4e2ff;
+    font-size: 1.05rem;
+}
+
+.panel p {
+    margin: 0;
+    color: #9cb2d2;
+}
+
+.live-feed {
+    min-height: 320px;
+    max-height: 460px;
+    overflow-y: auto;
+    padding: 20px;
+    border-radius: 20px;
+    background: rgba(8, 14, 24, 0.96);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.feed-item {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 12px;
+    padding: 14px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.feed-item:last-child {
+    border-bottom: none;
+}
+
+.feed-item .meta {
+    color: #7fb8ff;
+    font-size: 0.82rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+    white-space: nowrap;
+}
+
+.feed-item .message {
+    color: #dbe8ff;
+    line-height: 1.6;
+}
+
+@media (max-width: 720px) {
+    .dashboard-header,
+    .dashboard-meta {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .feed-item {
+        grid-template-columns: 1fr;
+    }
 }

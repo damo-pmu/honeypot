@@ -1,5 +1,5 @@
 """Repository layer for attack events - single source of truth for PostgreSQL queries"""
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta, timezone
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, func, and_
@@ -61,21 +61,21 @@ class AttackRepository:
     
     def count_by_period(self, hours: int = 24) -> int:
         """Count attacks in time period"""
-        cutoff = datetime.utcnow() - timedelta(hours=hours)
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
         return self.db.query(AttackDB).filter(
             AttackDB.timestamp >= cutoff
         ).count()
     
     def get_unique_ips(self, hours: int = 24) -> int:
         """Count unique attacker IPs in period"""
-        cutoff = datetime.utcnow() - timedelta(hours=hours)
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
         return self.db.query(AttackDB.attacker_ip).filter(
             AttackDB.timestamp >= cutoff
         ).distinct().count()
     
     def get_timeline_data(self, hours: int = 24) -> List[Dict[str, Any]]:
         """Get attack timeline grouped by hour - for graph visualization"""
-        cutoff = datetime.utcnow() - timedelta(hours=hours)
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
         results = self.db.query(
             func.date_trunc('hour', AttackDB.timestamp).label('hour'),
             AttackDB.protocol,
@@ -101,7 +101,7 @@ class AttackRepository:
     
     def get_top_attackers(self, limit: int = 10, hours: int = 24) -> List[Dict[str, Any]]:
         """Get top attackers by attack count"""
-        cutoff = datetime.utcnow() - timedelta(hours=hours)
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
         results = self.db.query(
             AttackDB.attacker_ip,
             AttackerDB.country,
@@ -134,7 +134,7 @@ class AttackRepository:
     
     def delete_old(self, days: int = 90) -> int:
         """Delete attacks older than specified days - for retention"""
-        cutoff = datetime.utcnow() - timedelta(days=days)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
         deleted = self.db.query(AttackDB).filter(
             AttackDB.timestamp < cutoff
         ).delete()

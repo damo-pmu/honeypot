@@ -1,4 +1,5 @@
 """FastAPI entry point for honeypot framework"""
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -12,7 +13,7 @@ from src.api.endpoints.analytics import router as analytics_router
 from src.api.endpoints.enrichment import router as enrichment_router
 from src.api.endpoints.ioc import router as ioc_router
 from src.api.endpoints.response import router as response_router
-from src.api.endpoints.dashboard import router as dashboard_router
+from src.api.endpoints.dashboard_v3 import router as dashboard_v3_router
 from src.api.endpoints.attacks import router as attacks_router
 
 # Import audit middleware
@@ -27,12 +28,25 @@ app = FastAPI(
     version="0.1.0"
 )
 
-# CORS for Grafana
+# CORS configuration (restricted to configured origins for security)
+# For development: Use HONEYPOT_HOSTNAME and CORS_ALLOWED_ORIGINS to avoid hardcoding
+honeypot_hostname = os.getenv("HONEYPOT_HOSTNAME", "localhost")
+configured_origins = os.getenv("CORS_ALLOWED_ORIGINS")
+if configured_origins:
+    allowed_origins = [origin.strip() for origin in configured_origins.split(",") if origin.strip()]
+else:
+    allowed_origins = [
+        f"http://{honeypot_hostname}:3000",
+        f"http://{honeypot_hostname}:5000",
+        f"http://{honeypot_hostname}:9090",
+    ]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=allowed_origins,
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_headers=["Content-Type", "Authorization"],
+    allow_credentials=True,
 )
 
 # Audit logging middleware
@@ -50,7 +64,7 @@ app.include_router(analytics_router)
 app.include_router(enrichment_router)
 app.include_router(ioc_router)
 app.include_router(response_router)
-app.include_router(dashboard_router)
+app.include_router(dashboard_v3_router)
 app.include_router(attacks_router)
 
 

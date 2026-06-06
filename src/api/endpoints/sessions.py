@@ -2,7 +2,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from typing import List
 from pydantic import BaseModel
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 from src.core.database import get_db, SessionDB, AttackerDB
@@ -18,7 +18,7 @@ class SessionBase(BaseModel):
 
 
 class SessionCreate(SessionBase):
-    pass
+    id: str | None = None  # Session UUID - generated server-side if not provided
 
 
 class Session(SessionBase):
@@ -49,6 +49,11 @@ def list_sessions(db: Session = Depends(get_db)):
 @router.post("/", response_model=Session, status_code=201)
 def create_session(session: SessionCreate, db: Session = Depends(get_db)):
     """Create session entry"""
+    import uuid
+    
+    # Use provided ID or generate server-side
+    session_id = session.id or str(uuid.uuid4())
+    
     # Ensure attacker exists
     db_attacker = db.query(AttackerDB).filter(AttackerDB.ip == session.attacker_ip).first()
     if not db_attacker:
@@ -57,10 +62,10 @@ def create_session(session: SessionCreate, db: Session = Depends(get_db)):
         db.commit()
     
     db_session = SessionDB(
-        id=session.id,
+        id=session_id,
         attacker_ip=session.attacker_ip,
         protocol=session.protocol,
-        start_time=datetime.utcnow(),
+        start_time=datetime.now(timezone.utc),
         interaction_count=session.interaction_count
     )
     db.add(db_session)
@@ -109,7 +114,7 @@ def end_session(session_id: str, db: Session = Depends(get_db)):
     if not db_session:
         raise HTTPException(status_code=404, detail="Session not found")
     
-    db_session.end_time = datetime.utcnow()
+    db_session.end_time = datetime.now(timezone.utc)
     if db_session.start_time:
         duration = (db_session.end_time - db_session.start_time).total_seconds()
         db_session.duration_seconds = int(duration)

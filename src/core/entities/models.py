@@ -99,6 +99,8 @@ class IOCIndicator(BaseModel):
     hit_count: int = 1
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: Optional[datetime] = None
+    related_attacker_ip: Optional[str] = None
+    related_session_id: Optional[str] = None
     
     # Inverse relation - sessions using this IOC
     related_sessions: Optional[List[str]] = None

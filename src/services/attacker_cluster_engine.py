@@ -1,7 +1,7 @@
 """Attacker Clustering Engine - Group similar attacker behaviors"""
 from typing import Dict, Any, List, Optional
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta, timezone
 import hashlib
 
 from sqlalchemy.orm import Session
@@ -24,7 +24,7 @@ class AttackerClusterEngine:
     
     def cluster_attackers(self, hours: int = 24) -> List[Dict[str, Any]]:
         """Group attackers by behavior similarity"""
-        cutoff = datetime.utcnow() - timedelta(hours=hours)
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
         
         # Get attackers with their commands/payloads
         attackers = self._get_attacker_behaviors(cutoff)

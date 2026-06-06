@@ -1,7 +1,7 @@
 """Campaign Detection Engine - Cluster attacks by shared indicators"""
 from typing import Dict, Any, List, Optional
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta, timezone
 
 from sqlalchemy.orm import Session
 from src.core.database import AttackDB
@@ -22,7 +22,7 @@ class CampaignEngine:
     
     def detect_campaigns(self, hours: int = 24) -> List[Dict[str, Any]]:
         """Find campaigns in recent attacks"""
-        cutoff = datetime.utcnow() - timedelta(hours=hours)
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
         
         attacks = self.db.query(AttackDB).filter(
             AttackDB.timestamp >= cutoff

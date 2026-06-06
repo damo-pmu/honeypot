@@ -1,11 +1,12 @@
 """Analytics API endpoints - PostgreSQL powered attack timeline"""
 from fastapi import APIRouter, Depends
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 from pydantic import BaseModel
 
 from sqlalchemy.orm import Session
 from src.core.database import get_db, SessionDB, CommandDB, AttackDB, AttackerDB
+from src.infrastructure.database.queries import get_top_attackers, get_flagged_commands, get_attack_timeline
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 
@@ -42,7 +43,7 @@ def get_session_timeline(session_id: str, db: Session = Depends(get_db)):
     if not db_session:
         return SessionTimeline(
             session_id=session_id, attacker_ip="unknown", protocol="SSH",
-            start_time=datetime.utcnow(), events=[], commands=[], iocs_detected=[], threat_class="UNKNOWN"
+            start_time=datetime.now(timezone.utc), events=[], commands=[], iocs_detected=[], threat_class="UNKNOWN"
         )
     
     # Get all commands in order
@@ -84,6 +85,24 @@ def get_session_timeline(session_id: str, db: Session = Depends(get_db)):
     )
 
 
+@router.get("/top-attackers")
+def get_top_attackers_route(limit: int = 10):
+    """Get the top attackers over recent history."""
+    return get_top_attackers(limit)
+
+
+@router.get("/flagged-commands")
+def get_flagged_commands_route():
+    """Get flagged suspicious commands."""
+    return get_flagged_commands()
+
+
+@router.get("/timeline")
+def get_attack_timeline_route(hours: int = 24):
+    """Get attack timeline query for the last N hours."""
+    return get_attack_timeline(hours)
+
+
 @router.get("/attack-feed", response_model=List[AttackEvent])
 def get_attack_feed(limit: int = 100, db: Session = Depends(get_db)):
     """Get all attack events chronologically"""
@@ -93,7 +112,7 @@ def get_attack_feed(limit: int = 100, db: Session = Depends(get_db)):
     events = []
     for cmd, session in cmd_data:
         events.append(AttackEvent(
-            timestamp=cmd.timestamp or datetime.utcnow(),
+            timestamp=cmd.timestamp or datetime.now(timezone.utc),
             session_id=cmd.session_id,
             attacker_ip=session.attacker_ip,
             event_type="command",

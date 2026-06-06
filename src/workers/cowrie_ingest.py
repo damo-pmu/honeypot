@@ -34,16 +34,14 @@ def send_to_api(endpoint: str, data: dict) -> bool:
 
 def scan_for_iocs(text: str) -> dict:
     """Extract IOCs from text (inline to avoid import issues)"""
-    import re
-    
-    hash_patterns = re.compile(r'\b[a-fA-F0-9]{32}\b|\b[a-fA-F0-9]{40}\b|\b[a-fA-F0-9]{64}\b')
-    ip_patterns = re.compile(r'\b(?:\d{1,3}\.){3}\d{1,3}\b')
-    url_patterns = re.compile(r'https?://[^\s<>\"{}|\\^`\[\]]+')
-    
+    from src.analytics.ioc_scanner import scan_for_iocs as analytics_scan_for_iocs
+
+    results = analytics_scan_for_iocs(text)
     return {
-        "hashes": list(set(hash_patterns.findall(text))),
-        "ips": list(set(ip_patterns.findall(text))),
-        "urls": list(set(url_patterns.findall(text)))
+        "hashes": [ioc.value for ioc in results["hashes"]],
+        "ips": [ioc.value for ioc in results["ips"]],
+        "urls": [ioc.value for ioc in results["urls"]],
+        "total": results.get("total", 0)
     }
 
 

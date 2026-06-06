@@ -2,7 +2,7 @@
 from fastapi import APIRouter, HTTPException
 from typing import Optional, List
 from pydantic import BaseModel
-from datetime import datetime
+from datetime import datetime, timezone
 
 router = APIRouter(prefix="/response", tags=["response"])
 
@@ -183,5 +183,5 @@ def log_response(request: LogResponseRequest):
         "status": "logged",
         "session_id": request.session_id,
         "template": request.template,
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat()
     }

@@ -64,18 +64,18 @@ def generate_windows_decoy(interaction_level: int = 0) -> DecoyEnvironment:
     files = [
         FakeFile(
             path="C:\\Windows\\System32\\config\\SAM",
-            content="Administrator:500:aad3b435b51404eeaad3b435b51404ee:32ed87bdb5fdc5e9cba88547376818d4:::",
+            content="Administrator:FAKE_NTLM_HASH_STUB:::",
             size_kb=500,
             mimetype="application/octet-stream"
         ),
         FakeFile(
             path="C:\\inetpub\\wwwroot\\web.config",
-            content="<?xml version=\"1.0\"?><configuration><connectionStrings><add name=\"DB\" connectionString=\"Server=db.internal;User=admin;Password=SuperSecret123!\"/></connectionStrings></configuration>",
+            content="<?xml version=\"1.0\"?><configuration><connectionStrings><add name=\"DB\" connectionString=\"Server=db.internal;User=admin;Password=FAKE_PASSWORD_STUB\"/></connectionStrings></configuration>",
             size_kb=8
         ),
         FakeFile(
             path="C:\\Users\\Administrator\\Desktop\\notes.txt",
-            content="TODO: Change password before vacation\nOld: admin123\nNew: Summer2024!",
+            content="IMPORTANT: This file contains FAKE credentials for testing only.\nFAKE_OLD_PASSWORD_STUB\nFAKE_NEW_PASSWORD_STUB",
             size_kb=1
         )
     ]
@@ -83,7 +83,7 @@ def generate_windows_decoy(interaction_level: int = 0) -> DecoyEnvironment:
     if interaction_level > 3:
         files.append(FakeFile(
             path="C:\\secrets\\backup_keys.txt",
-            content="ssh-rsa AAAAB3NzaC1yc2E... fake-key-for-attacker",
+            content="FAKE_SSH_KEY_STUB_FOR_TESTING_DO_NOT_USE",
             size_kb=2
         ))
     
@@ -96,7 +96,7 @@ def generate_windows_decoy(interaction_level: int = 0) -> DecoyEnvironment:
     )
 
 
-def generate_jenkins_decoy() -> DecoyEnvironment:
+def generate_jenkins_decoy(interaction_level: int = 0) -> DecoyEnvironment:
     """Generate Jenkins CI server decoy"""
     files = [
         FakeFile(

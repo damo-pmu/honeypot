@@ -1,28 +1,85 @@
+import os
+import requests
+from ipaddress import ip_address
+
 # GeoIP enrichment module
+# This implementation uses an external provider when the IP is public.
+# In production, it can be replaced with MaxMind MMDB or a local geoip2 database.
 
-# Mock provider for public repo (no API keys)
-# In production, use geoip2 or MaxMind MMDB
+def _is_public_ip(address: str) -> bool:
+    try:
+        parsed = ip_address(address)
+        return not (
+            parsed.is_private or
+            parsed.is_loopback or
+            parsed.is_unspecified or
+            parsed.is_reserved or
+            parsed.is_multicast
+        )
+    except ValueError:
+        return False
 
-MOCK_GEOIP = {
-    "192.168.1.1": {"country": "US", "city": "San Francisco", "asn": "AS12345"},
-    "10.0.0.1": {"country": "VN", "city": "Ho Chi Minh", "asn": "AS98765"},
-    "172.16.0.1": {"country": "DE", "city": "Berlin", "asn": "AS54321"},
-}
+
+def _normalize_asn(asn_raw: str | None) -> str:
+    if not asn_raw:
+        return "AS0"
+
+    normalized = str(asn_raw).strip()
+    if normalized.startswith("AS"):
+        return normalized.split(" ")[0]
+    return f"AS{normalized}" if normalized.isnumeric() else normalized
+
 
 def enrich_ip(ip: str) -> dict:
-    """Enrich IP with GeoIP data (mock for public)"""
-    data = MOCK_GEOIP.get(ip, {"country": "XX", "city": "Unknown", "asn": "AS0"})
+    """Enrich IP with GeoIP data."""
+    if not _is_public_ip(ip):
+        return {
+            "ip": ip,
+            "country": "XX",
+            "city": "Unknown",
+            "asn": "AS0",
+            "is_vpn": False,
+            "reputation": "unknown",
+        }
+
+    provider = os.getenv("GEOIP_PROVIDER", "ipapi").strip().lower()
+    if provider != "ipapi":
+        provider = "ipapi"
+
+    try:
+        response = requests.get(f"https://ipapi.co/{ip}/json/", timeout=4)
+        if response.status_code != 200:
+            raise RuntimeError("GeoIP provider responded with non-200")
+        data = response.json()
+    except Exception:
+        return {
+            "ip": ip,
+            "country": "XX",
+            "city": "Unknown",
+            "asn": "AS0",
+            "is_vpn": False,
+            "reputation": "unknown",
+        }
+
+    asn = _normalize_asn(data.get("asn") or data.get("org"))
+    city = data.get("city") or "Unknown"
+    country = data.get("country") or "XX"
+
+    reputation = data.get("reputation", "unknown")
+    if not isinstance(reputation, str):
+        reputation = "unknown"
+
     return {
         "ip": ip,
-        "country": data["country"],
-        "city": data["city"],
-        "asn": data["asn"],
-        "is_vpn": data["asn"].startswith("AS9"),  # Simple heuristic
-        "reputation": "unknown"
+        "country": country,
+        "city": city,
+        "asn": asn,
+        "is_vpn": detect_vpn_or_tor(asn),
+        "reputation": reputation,
     }
+
 
 def detect_vpn_or_tor(asn: str) -> bool:
     """Simple VPN/Tor detection heuristic"""
-    # In production, use actual Tor exit list + VPN provider lists
-    vpn_indicators = ["AS9", "AS16", "AS22", "AS30"]
+    vpn_indicators = ["AS9", "AS16", "AS22", "AS30", "TOR", "VPN"]
     return any(ind in asn for ind in vpn_indicators)

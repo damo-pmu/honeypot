@@ -1,5 +1,5 @@
 """Repository layer for payloads - single source of truth for PostgreSQL queries"""
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta, timezone
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
 
@@ -48,7 +48,7 @@ class PayloadRepository:
     
     def delete_old(self, days: int = 30) -> int:
         """Delete payloads older than N days - cleanup job"""
-        cutoff = datetime.utcnow() - timedelta(days=days)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
         deleted = self.db.query(PayloadDB).filter(
             PayloadDB.first_seen < cutoff
         ).delete()

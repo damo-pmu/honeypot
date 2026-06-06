@@ -1,5 +1,5 @@
 """Repository layer for IOCs - single source of truth for PostgreSQL queries"""
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta, timezone
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
 
@@ -23,7 +23,7 @@ class IOCRepository:
         
         if existing:
             existing.hit_count += 1
-            existing.last_seen = datetime.utcnow()
+            existing.last_seen = datetime.now(timezone.utc)
             if related_session_id:
                 # Link to session
                 from src.core.database import IOCSessionLink

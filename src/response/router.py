@@ -1,7 +1,7 @@
 """Response router - decides what to send based on attacker profile"""
 from enum import Enum
 from typing import Optional, Dict, List
-from datetime import datetime
+from datetime import datetime, timezone
 from pydantic import BaseModel
 
 
@@ -30,7 +30,7 @@ class ResponseDecision(BaseModel):
     content: Optional[str] = None
     reason: str
     use_adversarial: bool = False  # For AI detection
-    timestamp: datetime = datetime.utcnow()
+    timestamp: datetime = datetime.now(timezone.utc)
 
 
 def decide_response(
@@ -92,7 +92,7 @@ def decide_response(
             session_id=session_id,
             attacker_ip=attacker_ip,
             response_type=ResponseType.FAKE_ENVIRONMENT,
-            template_name="jenkins_instance/config",
+            template_name="jenkins_ci/config",
             reason="Human operator - realistic enterprise decoy"
         )
     
@@ -109,9 +109,9 @@ def decide_response(
 # Response templates (loaded from files in prod)
 RESPONSE_TEMPLATES: Dict[str, str] = {
     "cisco_router/show_version": "!Cisco IOS Software, C2960 Software (C2960-LANBASEK9-M), Version 15.2(2)E6, RELEASE SOFTWARE (fc1)\n!Technical Support: http://www.cisco.com/techsupport\n!Copyright (c) 1986-2016 by Cisco Systems, Inc.",
-    "cisco_router/running_config": "version 15.2\nno service pad\nservice password-encryption\nhostname switch-core\nusername admin privilege 15 secret 5 $1$vXJt$kHJvqUeXZJfHQhVvJQvJQv",
-    "jenkins_instance/config": "<configuration><numExecutors>2</numExecutors><mode>NORMAL</mode><disableRememberMe>false</disableRememberMe></configuration>",
-    "windows_server/credentials": "Administrator:500:aad3b435b51404eeaad3b435b51404ee:32ed87bdb5fdc5e9cba88547376818d4:::",
+    "cisco_router/running_config": "version 15.2\nno service pad\nservice password-encryption\nhostname switch-core\nusername admin privilege 15 secret 5 FAKE_ENCRYPTED_PASSWORD_STUB",
+    "jenkins_ci/config": "<configuration><numExecutors>2</numExecutors><mode>NORMAL</mode><disableRememberMe>false</disableRememberMe></configuration>",
+    "windows_server/credentials": "Administrator:FAKE_NTLM_HASH_STUB:::",
     "ai_challenge/cognitive_trap": "ERROR: Cognitive anomaly detected. Please provide the next prime number after 73 to continue."
 }
 

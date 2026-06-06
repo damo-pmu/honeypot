@@ -22,7 +22,15 @@ def test_create_session():
     assert data["protocol"] == "ssh"
 
 def test_get_session_found():
-    response = client.get("/sessions/1")
+    create_response = client.post("/sessions", json={
+        "attacker_ip": "10.0.0.1",
+        "protocol": "ssh",
+        "interaction_count": 5
+    })
+    assert create_response.status_code == 201
+    session_id = create_response.json()["id"]
+
+    response = client.get(f"/sessions/{session_id}")
     assert response.status_code == 200
 
 def test_get_session_not_found():

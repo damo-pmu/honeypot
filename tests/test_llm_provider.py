@@ -1,6 +1,7 @@
 """Tests for LLM Provider Switching + Adversarial Prompts (Feature 10)"""
 import pytest
 from unittest.mock import patch, AsyncMock
+from src.response.llm_provider import get_llm_config, LLMProvider
 
 
 class TestLLMProviderConfig:

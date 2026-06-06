@@ -10,15 +10,18 @@ class IOC(BaseModel):
     confidence: float = 1.0
     source: str = "scan"
 
-HASH_PATTERNS = re.compile(r'\b[a-fA-F0-9]{32}\b|\b[a-fA-F0-9]{40}\b|\b[a-fA-F0-9]{64}\b')
+HASH_PATTERNS = re.compile(r'\b[a-fA-F0-9]{32,64}\b')
 IP_PATTERNS = re.compile(r'\b(?:\d{1,3}\.){3}\d{1,3}\b')
 URL_PATTERNS = re.compile(r'https?://[^\s<>"{}|\\^`\[\]]+')
+HASH_KEYWORD_PATTERNS = re.compile(r'\b(?:sha1|sha256|md5|sha1sum|sha256sum|md5sum)[: ]+([a-fA-F0-9]{6,64})\b', re.IGNORECASE)
 
 def extract_hashes(data: str) -> List[IOC]:
     """Extract hash IOCs (MD5, SHA1, SHA256)"""
+    hashes = set(HASH_PATTERNS.findall(data))
+    hashes.update(HASH_KEYWORD_PATTERNS.findall(data))
     return [
         IOC(ioc_type="hash", value=h)
-        for h in set(HASH_PATTERNS.findall(data))
+        for h in hashes
     ]
 
 def extract_ips(data: str) -> List[IOC]:

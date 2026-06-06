@@ -2,7 +2,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 from src.analytics.ioc_scanner import scan_for_iocs, IOC
@@ -39,7 +39,7 @@ class IOCResponse(BaseModel):
 def scan_iocs(request: ScanRequest):
     """Scan text for IOCs (hashes, IPs, URLs)"""
     results = scan_for_iocs(request.text)
-    return {"status": "scanned", "results": results}
+    return {"status": "scanned", "results": results, **results}
 
 
 @router.post("/store", response_model=IOCResponse)
@@ -53,7 +53,7 @@ def store_ioc(request: CreateIOCRequest, db: Session = Depends(get_db)):
     
     if existing:
         existing.hit_count += 1
-        existing.last_seen = datetime.utcnow()
+        existing.last_seen = datetime.now(timezone.utc)
         db.commit()
         db.refresh(existing)
         ioc = existing

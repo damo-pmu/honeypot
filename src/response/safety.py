@@ -37,14 +37,37 @@ class SafetyIsolator:
     
     # Patterns that must NEVER appear in responses (prevent real data leakage)
     BLOCKED_PATTERNS = [
+        # Private keys and certificates
         r"BEGIN RSA PRIVATE KEY",
+        r"BEGIN PRIVATE KEY",
+        r"BEGIN EC PRIVATE KEY",
         r"-----BEGIN CERTIFICATE",
-        r"Procyon mark: true",  # Real secret marker
+        r"-----BEGIN OPENSSH PRIVATE KEY",
+        # Real secret markers and keys
+        r"Procyon mark: true",
         r"SECRET_KEY",
-        r"api_key.*[A-Za-z0-9]{20,}",
-        r"@hiddenlabs\.cc",  # Real domain
-        r"[a-z]{32,}",  # Long random tokens
-        r"password\s*=\s*['\"][A-Za-z0-9]{20,}['\"]",  # Real passwords
+        r"secret_access_key",
+        r"access_key_id",
+        # API keys with real patterns
+        r"api_key\s*[:=]\s*['\"]?[A-Za-z0-9_-]{32,}['\"]?",
+        r"sk_live_[A-Za-z0-9]{20,}",  # Stripe keys
+        r"pk_live_[A-Za-z0-9]{20,}",
+        r"ghp_[A-Za-z0-9]{36}",  # GitHub tokens
+        # Known real domains and companies
+        r"@hiddenlabs\.cc",
+        r"@company\.intranet",
+        r"@internal\.corp",
+        # Passwords with real patterns
+        r"password\s*[:=]\s*['\"]?[A-Za-z0-9!@#$%^&*]{20,}['\"]?",
+        r"passwd\s*[:=]\s*['\"]?[A-Za-z0-9!@#$%^&*]{20,}['\"]?",
+        r"secret\s*[:=]\s*['\"]?[A-Za-z0-9!@#$%^&*]{20,}['\"]?",
+        # Database credentials
+        r"mongodb://[^@]+@",
+        r"postgres://[^@]+@",
+        r"mysql://[^@]+@",
+        # AWS patterns
+        r"AKIA[0-9A-Z]{16}",  # AWS access key
+        r"(?i)aws_secret_access_key\s*[:=]",
     ]
     
     # Allowed templates only - whitelist principle
@@ -102,7 +125,8 @@ class SafetyIsolator:
         for cmd in commands[-10:]:  # Last 10 commands only
             # Remove any apparent secrets from commands going to LLM
             clean = re.sub(r"['\"][A-Za-z0-9/+]{20,}['\"]", "[REDACTED]", cmd)
-            clean = re.sub(r"https?://[^\\s]+", "[URL]", clean)
+            clean = re.sub(r"(?:key|password|passwd|secret)\s*[:=]\s*[A-Za-z0-9/+]{20,}", "[REDACTED]", clean, flags=re.IGNORECASE)
+            clean = re.sub(r"https?://\S+", "[URL]", clean)
             sanitized.append(clean)
         return "\n".join(sanitized)
 
