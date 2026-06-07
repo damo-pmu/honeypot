@@ -3,6 +3,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 
 # Import routers
 from src.api.endpoints.attackers import router as attackers_router
@@ -53,7 +54,7 @@ app.add_middleware(
 app.add_middleware(AuditMiddleware)
 
 # Static files mount for dashboard assets
-app.mount("/static", StaticFiles(directory="src/static"), name="static")
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Include routers
 app.include_router(attackers_router)
