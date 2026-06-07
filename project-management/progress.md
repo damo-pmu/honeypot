@@ -1,5 +1,32 @@
 # Progress - Honeypot Phase 3
 
+## Session 2026-06-07
+
+### Objectif
+Finaliser la migration Jinja2 - corriger erreur 500, dashboard fonctionnel
+
+### Travaux réalisés
+- ✅ Root cause identifiée : bug starlette 1.2.1 avec Jinja2Templates cache
+- ✅ Solution : migration vers `jinja2.Environment` direct
+- ✅ Dockerfile: templates intégrés via COPY (pas de volume)
+- ✅ docker-compose.yml: volume templates supprimé
+- ✅ JS dashboard.js: refreshStats() ajouté (12s auto-refresh)
+- ✅ Routes `/dashboard/analytics` et `/dashboard/settings` fonctionnelles
+- ✅ Documentation APIS.md et HANDOVER.md mises à jour
+- ✅ Commits poussés sur `phase3-work-final`
+
+### Tests exécutés
+- Endpoints manuels : `/dashboard/` ✓, `/dashboard/analytics` ✓, `/dashboard/settings` ✓
+- `/dashboard/api/stats` ✓, `/dashboard/api/health` ✓
+
+### Documentation mise à jour
+- [x] docs/APIS.md - nouvelles routes ajoutées
+- [x] docs/HANDOVER.md - état actuel et corrections Jinja2
+
+### Prochaine étape
+- [ ] Tests pytest automatisés
+- [ ] Vérifier exports CSV/Excel
+
 ## Session 2026-06-06
 
 ### Objectif
@@ -21,9 +48,6 @@ Corriger l'erreur 500 sur `/dashboard/` et implémenter `/dashboard/analytics`
 - [x] project-management/roadmap.md
 - [x] project-management/backlog.md
 
-### Commits réalisés
-- Modifications non commitées sur phase3-work-final (attendre doc APIS.md)
-
 ### Prochaine étape
-- Mettre à jour `docs/APIS.md`
-- Implémenter `/dashboard/settings`
+- ~~Mettre à jour `docs/APIS.md`~~ (fait)
+- ~~Implémenter `/dashboard/settings`~~ (fait)
