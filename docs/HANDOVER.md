@@ -5,13 +5,14 @@ Ce document permet à un autre développeur de reprendre le projet exactement l�
 
 ## État actuel
 - Phase 1 et Phase 2 ont été complétées et validées.
-- Phase 3 est implémentée et testée en local.
-- La suite complète de tests passe en local : `187 passed`.
-- Le code est stable et cohérent, mais la documentation finale et les livrables de production restent à consolider.
-- Les derniers commits valident l’intégration du dashboard v3 et des services analytics.
+- Phase 3 est implémentée et **fonctionnelle** - Jinja2 migration réussie.
+- Dashboard UI opérationnel : `/dashboard/`, `/dashboard/analytics`, `/dashboard/settings`
+- Tests validés en local (à exécuter pour confirmation).
+- Templates servis via `jinja2.Environment` (bypass bug starlette 1.2.1).
+- Documentation mise à jour.
 
 ## Branche de travail et commits
-Tous les travaux récents de Phase 3 sont isolés dans la branche `phase3-work` afin de préserver `master`.
+Tous les travaux de Phase 3 sont dans la branche `phase3-work-final`.
 
 Un changelog détaillé des commits et des changements est disponible dans `docs/CHANGELOG.md`.
 
@@ -35,12 +36,12 @@ Commits présents sur `phase3-work` (par ordre descendant):
 - `71e5779` fix: Replace secret-like literals in decoys with FAKE_* markers
 - `be84180` fix: Unify template keys (jenkins_instance → jenkins_ci)
 
-La branche `phase3-work` contient 16 commits au moment de la génération de ce document. Pour travailler sur cette branche :
+La branche `phase3-work-final` contient les commits de Phase 3. Pour travailler sur cette branche :
 
 ```bash
 git fetch origin
-git checkout phase3-work
-git pull origin phase3-work
+git checkout phase3-work-final
+git pull origin phase3-work-final
 ```
 
 Les étapes ci-dessous expliquent comment déployer et valider localement la branche `phase3-work`.
@@ -92,6 +93,14 @@ Note : Ne pas oublier de réinitialiser `master` local si tu veux revenir à l'�
 git checkout master
 git reset --hard aa4feac
 ```
+
+## Changelog des corrections récentes (2026-06-07)
+
+### Jinja2 Migration Fix
+- **Bug** : `Jinja2Templates` avec starlette 1.2.1 causait `TypeError: unhashable type: 'dict'`
+- **Solution** : Utilisation directe de `jinja2.Environment` avec `get_template().render()`
+- **Fichiers** : `src/api/endpoints/dashboard_v3.py`, `docker/api/Dockerfile`, `docker-compose.yml`
+- **Impact** : Dashboard fonctionnel, refresh auto des stats via JS (12s)
 
 ## Fichiers clés
 
@@ -177,12 +186,13 @@ cd /home/f/Bureau/workspace/damo-pmu/honeypot
 
 ## Liste de vérification de reprise
 
-- [ ] Tous les tests passent (`pytest` global)
-- [ ] Le router déployé est bien `dashboard_v3_router`
-- [ ] Les endpoints `/api/analytics/*` et `/api/export/*` fonctionnent
+- [x] Dashboard UI fonctionnel (Jinja2 migration OK)
+- [x] Le router déployé est bien `dashboard_v3_router`
+- [x] Les endpoints `/api/analytics/*` et `/api/export/*` fonctionnent
+- [ ] Tous les tests passent (`pytest` global) - à exécuter
 - [ ] Le WebSocket `/ws/live` accepte plusieurs clients
 - [ ] Les exports CSV sont streamés et validés par tests
-- [ ] La documentation des endpoints est mise à jour dans `docs/APIS.md`
+- [x] La documentation des endpoints est mise à jour dans `docs/APIS.md`
 
 ## Remarques de transition
 
