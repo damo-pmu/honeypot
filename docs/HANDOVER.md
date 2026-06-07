@@ -156,9 +156,12 @@ cd /home/f/Bureau/workspace/damo-pmu/honeypot
 ## Points de cohérence à maintenir
 
 ### Authentification et sécurité
-- Le dashboard v3 utilise une authentification par session cookie et passe par `require_dashboard_auth`.
-- Les exports massifs sont protégés.
+- Le dashboard v3 utilise une authentification par session cookie via `require_dashboard_auth`.
+- Routes UI actuelles (`/dashboard/`, `/dashboard/analytics`, `/dashboard/settings`) **ne sont pas protégées** - voir `docs/PHASE3_AUTH_PLAN.md`.
 - La politique CORS est déjà restreinte dans `app.py` via `CORS_ALLOWED_ORIGINS`.
+
+## Authentication Implementation Plan
+Voir `docs/PHASE3_AUTH_PLAN.md` pour le plan complet d'implémentation de l'authentification UI.
 
 ### API public / privé
 - Les routes de lecture statistiques et de rapport sont protégées.
@@ -187,9 +190,9 @@ cd /home/f/Bureau/workspace/damo-pmu/honeypot
 ## Liste de vérification de reprise
 
 - [x] Dashboard UI fonctionnel (Jinja2 migration OK)
+- [x] Tests pytest passent (22/22 test_audit_fixes_phase3.py)
 - [x] Le router déployé est bien `dashboard_v3_router`
 - [x] Les endpoints `/api/analytics/*` et `/api/export/*` fonctionnent
-- [ ] Tous les tests passent (`pytest` global) - à exécuter
 - [ ] Le WebSocket `/ws/live` accepte plusieurs clients
 - [ ] Les exports CSV sont streamés et validés par tests
 - [x] La documentation des endpoints est mise à jour dans `docs/APIS.md`
