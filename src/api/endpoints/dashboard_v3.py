@@ -9,39 +9,40 @@ Complete production-ready dashboard API with:
 - Comprehensive filtering and search
 - Performance optimization
 """
-import json
 import asyncio
-from datetime import datetime, timezone, timedelta, timezone
-from typing import Optional, List, Dict, Any
-from enum import Enum
+from datetime import datetime, timezone
+from typing import Optional, List
 
-from fastapi import APIRouter, HTTPException, Depends, Request, Response, Query, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, HTTPException, Depends, Request, Query, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse
+from jinja2 import Environment, FileSystemLoader
 from sqlalchemy.orm import Session
-from sqlalchemy import func, and_
 
-from src.core.database import get_db, AttackerDB, SessionDB, CommandDB, AttackDB, IOCDb, PayloadDB
+from src.core.database import get_db, AttackerDB, SessionDB, CommandDB
 from src.services.dashboard_analytics_service import DashboardAnalyticsService, DashboardExportService
 from src.services.statistics_service import StatisticsService
-from src.api.middleware.session import get_session, DASHBOARD_PASSWORD
-from src.utils.audit_logger import log_auth_event
+from src.api.middleware.session import get_session
+
+# Templates directory
+templates = Environment(loader=FileSystemLoader("templates"))
 
 # Initialize router with auth prefix
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
+
 
 # WebSocket connection manager for real-time updates
 class ConnectionManager:
     """Manage WebSocket connections for real-time dashboard updates"""
     def __init__(self):
         self.active_connections: List[WebSocket] = []
-    
+
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
         self.active_connections.append(websocket)
-    
+
     async def disconnect(self, websocket: WebSocket):
         self.active_connections.remove(websocket)
-    
+
     async def broadcast(self, message: dict):
         """Send message to all connected clients"""
         for connection in self.active_connections:
@@ -50,12 +51,11 @@ class ConnectionManager:
             except Exception:
                 pass
 
+
 manager = ConnectionManager()
 
 
-# ============================================================
 # Authentication Helpers
-# ============================================================
 def require_dashboard_auth(request: Request) -> bool:
     """Check if user has valid dashboard session"""
     session = get_session(request)
@@ -64,79 +64,41 @@ def require_dashboard_auth(request: Request) -> bool:
     return True
 
 
-# ============================================================
-# UI Routes
-# ============================================================
+# UI Routes (using Jinja2 templates)
 @router.get("/", response_class=HTMLResponse)
 def dashboard_home(request: Request, db: Session = Depends(get_db)):
-    """Serve dashboard home page"""
+    """Serve dashboard home page via Jinja2"""
     try:
         service = StatisticsService(db)
         stats = service.get_dashboard_stats()
-    except Exception as e:
-        return f"<html><body><h1>Dashboard Error</h1><pre>{e}</pre></body></html>"
-    
-    return f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Honeypot SOC Dashboard</title>
-        <style>
-            * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-            body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f0f0f; color: #e0e0e0; }}
-            .container {{ max-width: 1400px; margin: 0 auto; padding: 20px; }}
-            .header {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 20px; }}
-            .header h1 {{ font-size: 28px; color: #fff; }}
-            .header-nav a {{ margin-left: 20px; color: #0f0; text-decoration: none; }}
-            .stats-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px; }}
-            .stat-card {{ background: #1a1a1a; padding: 20px; border-radius: 8px; border-left: 4px solid #0f0; }}
-            .stat-card h3 {{ font-size: 12px; color: #999; text-transform: uppercase; margin-bottom: 10px; }}
-            .stat-card .value {{ font-size: 32px; color: #0f0; font-weight: bold; }}
-            .controls {{ display: flex; gap: 10px; margin-bottom: 20px; }}
-            .btn {{ padding: 10px 20px; background: #0f0; color: #000; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }}
-            .btn:hover {{ background: #0d0; }}
-            .table {{ width: 100%; background: #1a1a1a; border-collapse: collapse; }}
-            .table th {{ background: #222; padding: 12px; text-align: left; border-bottom: 1px solid #333; }}
-            .table td {{ padding: 12px; border-bottom: 1px solid #333; }}
-            .table tr:hover {{ background: #222; }}
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="header">
-                <h1>🔓 Honeypot SOC Dashboard</h1>
-                <div class="header-nav">
-                    <a href="/dashboard/analytics">Analytics</a>
-                    <a href="/dashboard/settings">Settings</a>
-                </div>
-            </div>
-            
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <h3>Active Sessions</h3>
-                    <div class="value">{stats.get('active_sessions', 0)}</div>
-                </div>
-                <div class="stat-card">
-                    <h3>Unique Attackers</h3>
-                    <div class="value">{stats.get('unique_attackers', 0)}</div>
-                </div>
-                <div class="stat-card">
-                    <h3>High Risk</h3>
-                    <div class="value">{stats.get('high_threat_count', 0)}</div>
-                </div>
-                <div class="stat-card">
-                    <h3>IOCs Extracted</h3>
-                    <div class="value">{stats.get('ioc_count', 0)}</div>
-                </div>
-            </div>
-            </body>
-        </html>
-        """
+    except Exception:
+        stats = {"active_sessions": 0, "unique_attackers": 0, "high_threat_count": 0, "ioc_count": 0}
+
+    html = templates.get_template("dashboard.html").render(
+        request=request, stats=stats, active_page="home"
+    )
+    return HTMLResponse(content=html)
 
 
-# ============================================================
+@router.get("/analytics", response_class=HTMLResponse)
+def analytics_page(request: Request, db: Session = Depends(get_db)):
+    """Serve analytics dashboard page via Jinja2"""
+    html = templates.get_template("dashboard_analytics.html").render(
+        request=request, active_page="analytics"
+    )
+    return HTMLResponse(content=html)
+
+
+@router.get("/settings", response_class=HTMLResponse)
+def settings_page(request: Request):
+    """Serve dashboard settings page via Jinja2"""
+    html = templates.get_template("dashboard_settings.html").render(
+        request=request, active_page="settings"
+    )
+    return HTMLResponse(content=html)
+
+
 # API: Dashboard Statistics (Public - cached)
-# ============================================================
 @router.get("/api/stats")
 def get_dashboard_stats(db: Session = Depends(get_db)):
     """Get dashboard overview statistics - CACHED"""
@@ -151,9 +113,7 @@ def get_live_feed(db: Session = Depends(get_db), limit: int = Query(50, le=500))
     return {"items": service.get_live_feed(limit=limit)}
 
 
-# ============================================================
 # API: Advanced Analytics (Protected)
-# ============================================================
 @router.get("/api/analytics/threat-heatmap")
 def get_threat_heatmap(
     request: Request,
@@ -178,11 +138,8 @@ def get_attacker_profiles(
     require_dashboard_auth(request)
     analytics = DashboardAnalyticsService(db)
     profiles = analytics.get_attacker_profiles(limit)
-    
-    # Filter and sort
     if min_threat_score > 0:
         profiles = [p for p in profiles if p["threat_score"] >= min_threat_score]
-    
     profiles.sort(key=lambda p: p.get(sort_by, 0), reverse=True)
     return {"profiles": profiles, "count": len(profiles)}
 
@@ -198,18 +155,13 @@ def get_command_patterns(
     require_dashboard_auth(request)
     analytics = DashboardAnalyticsService(db)
     result = analytics.get_command_patterns(limit)
-    
     if suspicious_only:
         result["patterns"] = [p for p in result["patterns"] if p["risk_score"] > 50]
-    
     return result
 
 
 @router.get("/api/analytics/ioc-summary")
-def get_ioc_summary(
-    request: Request,
-    db: Session = Depends(get_db)
-):
+def get_ioc_summary(request: Request, db: Session = Depends(get_db)):
     """Get IOC extraction summary and trending"""
     require_dashboard_auth(request)
     analytics = DashboardAnalyticsService(db)
@@ -229,10 +181,7 @@ def get_payload_analysis(
 
 
 @router.get("/api/analytics/attack-taxonomy")
-def get_attack_taxonomy(
-    request: Request,
-    db: Session = Depends(get_db)
-):
+def get_attack_taxonomy(request: Request, db: Session = Depends(get_db)):
     """Get attacks grouped by type/category"""
     require_dashboard_auth(request)
     analytics = DashboardAnalyticsService(db)
@@ -251,9 +200,7 @@ def get_correlation_insights(
     return analytics.get_correlation_insights(hours)
 
 
-# ============================================================
 # API: Export & Reporting (Protected)
-# ============================================================
 @router.get("/api/export/threat-report")
 def export_threat_report(
     request: Request,
@@ -265,15 +212,8 @@ def export_threat_report(
     require_dashboard_auth(request)
     exporter = DashboardExportService(db)
     report = exporter.export_threat_report(hours)
-    
     if format == "csv":
-        # Return CSV data as downloadable file
-        csv_headers = exporter.export_csv_headers()
-        return JSONResponse(
-            {"message": "CSV export format coming soon"},
-            status_code=501
-        )
-    
+        return JSONResponse({"message": "CSV export format coming soon"}, status_code=501)
     return report
 
 
@@ -285,23 +225,17 @@ async def export_attackers_csv(
 ):
     """Export attackers list as CSV"""
     require_dashboard_auth(request)
-    
     attackers = db.query(AttackerDB).limit(limit).all()
-    
+
     def generate():
-        # Headers
         yield "ip,classification,threat_score,threat_level,country,asn,reputation,first_seen,last_seen\n"
-        
-        # Data rows
         for attacker in attackers:
             first_seen = db.query(SessionDB).filter(
                 SessionDB.attacker_ip == attacker.ip
             ).order_by(SessionDB.start_time.asc()).first()
-            
             last_seen = db.query(SessionDB).filter(
                 SessionDB.attacker_ip == attacker.ip
             ).order_by(SessionDB.start_time.desc()).first()
-            
             yield (
                 f"{attacker.ip},"
                 f"{attacker.classification or 'unknown'},"
@@ -313,7 +247,7 @@ async def export_attackers_csv(
                 f"{first_seen.start_time.isoformat() if first_seen else ''},"
                 f"{last_seen.start_time.isoformat() if last_seen else ''}\n"
             )
-    
+
     return StreamingResponse(
         generate(),
         media_type="text/csv",
@@ -321,9 +255,7 @@ async def export_attackers_csv(
     )
 
 
-# ============================================================
 # API: Advanced Search & Filtering
-# ============================================================
 @router.get("/api/search/sessions")
 def search_sessions(
     request: Request,
@@ -337,9 +269,7 @@ def search_sessions(
 ):
     """Advanced session search with filters"""
     require_dashboard_auth(request)
-    
     query = db.query(SessionDB)
-    
     if ip:
         query = query.filter(SessionDB.attacker_ip == ip)
     if protocol:
@@ -348,10 +278,9 @@ def search_sessions(
         query = query.filter(SessionDB.duration_seconds >= min_duration)
     if max_duration:
         query = query.filter(SessionDB.duration_seconds <= max_duration)
-    
+
     total = query.count()
     results = query.order_by(SessionDB.start_time.desc()).offset(offset).limit(limit).all()
-    
     return {
         "results": [
             {
@@ -382,9 +311,7 @@ def search_commands(
 ):
     """Search commands with filtering"""
     require_dashboard_auth(request)
-    
     cmd_query = db.query(CommandDB)
-    
     if query:
         cmd_query = cmd_query.filter(CommandDB.command.ilike(f"%{query}%"))
     if session_id:
@@ -393,34 +320,24 @@ def search_commands(
         cmd_query = cmd_query.filter(CommandDB.attacker_ip == ip)
     if flagged_only:
         cmd_query = cmd_query.filter(CommandDB.flagged == True)
-    
     results = cmd_query.order_by(CommandDB.timestamp.desc()).limit(limit).all()
-    
     return {
         "results": [
-            {
-                "id": c.id,
-                "session_id": c.session_id,
-                "command": c.command,
-                "timestamp": c.timestamp.isoformat(),
-                "flagged": c.flagged
-            }
+            {"id": c.id, "session_id": c.session_id, "command": c.command,
+             "timestamp": c.timestamp.isoformat(), "flagged": c.flagged}
             for c in results
         ],
         "count": len(results)
     }
 
 
-# ============================================================
 # API: Real-time WebSocket
-# ============================================================
 @router.websocket("/ws/live")
 async def websocket_live_feed(websocket: WebSocket):
     """Real-time live feed updates via WebSocket"""
     await manager.connect(websocket)
     try:
         while True:
-            # Keep connection alive
             data = await websocket.receive_text()
             if data == "ping":
                 await websocket.send_json({"type": "pong"})
@@ -428,9 +345,7 @@ async def websocket_live_feed(websocket: WebSocket):
         manager.disconnect(websocket)
 
 
-# ============================================================
 # API: Health & Metadata
-# ============================================================
 @router.get("/api/health")
 def health_check():
     """Dashboard health check"""
@@ -456,91 +371,8 @@ def get_endpoint_metadata():
                 "/api/analytics/attack-taxonomy",
                 "/api/analytics/correlations"
             ],
-            "export": [
-                "/api/export/threat-report",
-                "/api/export/attackers"
-            ],
-            "search": [
-                "/api/search/sessions",
-                "/api/search/commands"
-            ],
-            "realtime": [
-                "/ws/live"
-            ]
+            "export": ["/api/export/threat-report", "/api/export/attackers"],
+            "search": ["/api/search/sessions", "/api/search/commands"],
+            "realtime": ["/ws/live"]
         }
     }
-
-
-# ============================================================
-# UI Route: Analytics Page
-# ============================================================
-@router.get("/analytics", response_class=HTMLResponse)
-def analytics_page(request: Request, db: Session = Depends(get_db)):
-    """Serve analytics dashboard page with charts and insights"""
-    try:
-        analytics = DashboardAnalyticsService(db)
-        heatmap = analytics.get_threat_heat_map(hours=24)
-        profiles = analytics.get_attacker_profiles(limit=10)
-        patterns = analytics.get_command_patterns(limit=20)
-    except Exception:
-        heatmap = {"heatmap": {}, "period_hours": 24}
-        profiles = []
-        patterns = {"patterns": []}
-
-    return f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Analytics Dashboard</title>
-        <style>
-            * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-            body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f0f0f; color: #e0e0e0; }}
-            .container {{ max-width: 1400px; margin: 0 auto; padding: 20px; }}
-            .header {{ margin-bottom: 30px; }}
-            .header h1 {{ font-size: 28px; color: #fff; }}
-            .header a {{ margin-left: 20px; color: #0f0; text-decoration: none; }}
-            .section {{ background: #1a1a1a; padding: 20px; border-radius: 8px; margin-bottom: 20px; }}
-            .section h2 {{ color: #0f0; margin-bottom: 15px; }}
-            .grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }}
-            .card {{ background: #222; padding: 15px; border-radius: 4px; }}
-            .card h3 {{ font-size: 14px; color: #999; margin-bottom: 10px; }}
-            pre {{ background: #000; padding: 10px; border-radius: 4px; overflow-x: auto; }}
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="header">
-                <h1>📊 Analytics Dashboard</h1>
-                <a href="/dashboard/">← Back to Dashboard</a>
-            </div>
-            
-            <div class="grid">
-                <div class="section card">
-                    <h2>Threat Heatmap (24h)</h2>
-                    <pre>{json.dumps(heatmap.get('heatmap', {}), indent=2)[:500]}</pre>
-                </div>
-                
-                <div class="section card">
-                    <h2>Top Attacker Profiles</h2>
-                    <pre>{json.dumps(profiles[:5], indent=2)}</pre>
-                </div>
-                
-                <div class="section card">
-                    <h2>Command Patterns</h2>
-                    <pre>{json.dumps(patterns, indent=2)}</pre>
-                </div>
-                
-                <div class="section card">
-                    <h2>API Endpoints</h2>
-                    <ul>
-                        <li><a href="/dashboard/api/analytics/threat-heatmap">/api/analytics/threat-heatmap</a></li>
-                        <li><a href="/dashboard/api/analytics/attacker-profiles">/api/analytics/attacker-profiles</a></li>
-                        <li><a href="/dashboard/api/analytics/command-patterns">/api/analytics/command-patterns</a></li>
-                        <li><a href="/dashboard/api/analytics/ioc-summary">/api/analytics/ioc-summary</a></li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-    </body>
-    </html>
-    """

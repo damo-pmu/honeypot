@@ -212,6 +212,8 @@ UNKNOWN → cisco running_config
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/dashboard/` | Dashboard UI home |
+| GET | `/dashboard/analytics` | Analytics UI page |
+| GET | `/dashboard/settings` | Settings UI page |
 | GET | `/dashboard/login` | Dashboard login page |
 | POST | `/dashboard/login` | Submit dashboard password |
 | GET | `/dashboard/logout` | Logout from dashboard |

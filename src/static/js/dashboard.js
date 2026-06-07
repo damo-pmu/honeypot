@@ -1,6 +1,7 @@
 const liveFeedElement = document.getElementById('live-feed');
 const refreshButton = document.getElementById('refresh-button');
 const fallbackNotice = document.getElementById('live-feed-fallback');
+const statsValues = document.querySelectorAll('.metric-value');
 
 async function fetchLiveFeed() {
     if (!liveFeedElement) {
@@ -49,6 +50,30 @@ function renderLiveFallback(message) {
     liveFeedElement.innerHTML = `<div class="feed-item"><div class="message">${message}</div></div>`;
 }
 
+async function refreshStats() {
+    try {
+        const response = await fetch('/dashboard/api/stats', { credentials: 'include' });
+        if (!response.ok) return;
+        const data = await response.json();
+        const stats = [
+            data.active_sessions,
+            data.unique_attackers,
+            data.high_threat_count,
+            data.ioc_count
+        ];
+        statsValues.forEach((el, i) => {
+            if (el && stats[i] !== undefined) {
+                el.textContent = stats[i];
+                el.style.transition = 'color 0.3s ease';
+                el.style.color = '#0f0';
+                setTimeout(() => el.style.color = '', 300);
+            }
+        });
+    } catch (error) {
+        console.warn('Stats refresh failed:', error);
+    }
+}
+
 function connectLiveSocket() {
     if (!liveFeedElement || !window.WebSocket) {
         return;
@@ -93,9 +118,14 @@ if (refreshButton) {
     refreshButton.addEventListener('click', event => {
         event.preventDefault();
         fetchLiveFeed();
+        refreshStats();
     });
 }
 
 fetchLiveFeed();
 connectLiveSocket();
-setInterval(fetchLiveFeed, 12000);
+refreshStats();
+setInterval(() => {
+    fetchLiveFeed();
+    refreshStats();
+}, 12000);

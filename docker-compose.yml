@@ -22,7 +22,6 @@ services:
       - api_logs:/app/logs
       - api_data:/app/data
       - ./src/static:/app/static:ro
-      - ./src/templates:/app/templates:ro
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 30s
