@@ -174,16 +174,24 @@ Voir `docs/PHASE3_AUTH_PLAN.md` pour le plan complet d'implémentation de l'auth
 
 ## Prochaines tâches recommandées
 
-### 1. Stabilisation de la dashboard UI
+### 1. Authentication UI (Phase 3b - en cours)
+- [x] Ajouter `/dashboard/login` route (template + POST handler)
+- [x] Ajouter `/dashboard/logout` route
+- [x] Protéger routes UI avec `require_dashboard_auth`
+- [ ] Test manuel : login/logout flow
+
+### 2. Stabilisation de la dashboard UI
 - Vérifier si `src/api/endpoints/dashboard_v3.py` expose un rendu HTML ou si le frontend sera séparé.
 - Normaliser l’interface de streaming des événements si besoin.
 
-### 2. Renforcement de la documentation
-- Documenter les endpoints dashboard v3 dans `docs/APIS.md`
+### 3. Renforcement de la documentation
+- Documenter les endpoints dashboard v3 dans `docs/APIS.md` ✓
 - Ajouter un schéma de données pour les réponses principales.
 
-### 3. Nettoyage et alignement
+### 4. Nettoyage et alignement
 - Corriger les avertissements de dépréciation (`datetime.utcnow()` → `datetime.now(datetime.UTC)`).
+- Vérifier la cohérence de l'authentification des endpoints déjà publics.
+- S'assurer que `.env.example` et `docker-compose.yml` utilisent les mêmes variables.
 - Vérifier la cohérence de l’authentification des endpoints déjà publics.
 - S’assurer que `.env.example` et `docker-compose.yml` utilisent les mêmes variables.
 

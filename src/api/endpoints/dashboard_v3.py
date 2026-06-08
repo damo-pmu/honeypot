@@ -13,15 +13,16 @@ import asyncio
 from datetime import datetime, timezone
 from typing import Optional, List
 
-from fastapi import APIRouter, HTTPException, Depends, Request, Query, WebSocket, WebSocketDisconnect
-from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse
+from fastapi import APIRouter, HTTPException, Depends, Request, Query, WebSocket, WebSocketDisconnect, Form, Response
+from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse, RedirectResponse
 from jinja2 import Environment, FileSystemLoader
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from src.core.database import get_db, AttackerDB, SessionDB, CommandDB
+from src.core.database import get_db, AttackerDB, SessionDB, CommandDB, AttackDB
 from src.services.dashboard_analytics_service import DashboardAnalyticsService, DashboardExportService
 from src.services.statistics_service import StatisticsService
-from src.api.middleware.session import get_session
+from src.api.middleware.session import get_session, create_session, clear_session
 
 # Templates directory
 templates = Environment(loader=FileSystemLoader("templates"))
@@ -56,18 +57,23 @@ manager = ConnectionManager()
 
 
 # Authentication Helpers
-def require_dashboard_auth(request: Request) -> bool:
-    """Check if user has valid dashboard session"""
+def require_dashboard_auth(request: Request):
+    """Check if user has valid dashboard session - redirect to login if not"""
     session = get_session(request)
     if not session:
-        raise HTTPException(status_code=401, detail="Unauthorized - please login")
-    return True
+        # Store intended destination for post-login redirect
+        return None
+    return session
 
 
 # UI Routes (using Jinja2 templates)
 @router.get("/", response_class=HTMLResponse)
 def dashboard_home(request: Request, db: Session = Depends(get_db)):
-    """Serve dashboard home page via Jinja2"""
+    """Serve dashboard home page via Jinja2 - requires auth"""
+    session = require_dashboard_auth(request)
+    if not session:
+        return RedirectResponse(url="/dashboard/login", status_code=302)
+    
     try:
         service = StatisticsService(db)
         stats = service.get_dashboard_stats()
@@ -80,9 +86,121 @@ def dashboard_home(request: Request, db: Session = Depends(get_db)):
     return HTMLResponse(content=html)
 
 
+@router.get("/login", response_class=HTMLResponse)
+def login_page(request: Request, error: str = ""):
+    """Serve login page"""
+    html = templates.get_template("login.html").render(
+        request=request, error=error
+    )
+    return HTMLResponse(content=html)
+
+
+@router.post("/login")
+def login_submit(request: Request, password: str = Form(...)):
+    """Process login form"""
+    from src.api.middleware.session import DASHBOARD_PASSWORD
+    if password == DASHBOARD_PASSWORD:
+        response = RedirectResponse(url="/dashboard/", status_code=302)
+        session_id = create_session(response)
+        return response
+    # Wrong password - redirect with error
+    return RedirectResponse(url="/dashboard/login?error=1", status_code=302)
+
+
+class SessionCreateRequest(BaseModel):
+    session_id: str
+    attacker_ip: str
+    protocol: str = "SSH"
+
+
+class EventCreateRequest(BaseModel):
+    session_id: str
+    attacker_ip: str
+    protocol: str = "SSH"
+    attack_type: str
+    payload: str = ""
+    severity: int = 50
+
+
+# ===== INTERNAL ENDPOINTS (unprotected - used by worker) =====
+
+# Separate router for internal endpoints (worker calls without /dashboard prefix)
+internal_router = APIRouter(tags=["internal"])
+
+
+@internal_router.post("/internal/sessions", status_code=201)
+def internal_create_session(request: SessionCreateRequest, db: Session = Depends(get_db)):
+    """Internal endpoint - create session from Cowrie worker"""
+    # Ensure attacker exists (required for FK constraint)
+    db_attacker = db.query(AttackerDB).filter(AttackerDB.ip == request.attacker_ip).first()
+    if not db_attacker:
+        db_attacker = AttackerDB(ip=request.attacker_ip)
+        db.add(db_attacker)
+        db.commit()
+
+    db_session = db.query(SessionDB).filter(SessionDB.id == request.session_id).first()
+    if not db_session:
+        db_session = SessionDB(id=request.session_id, attacker_ip=request.attacker_ip, protocol=request.protocol)
+        db.add(db_session)
+        db.commit()
+        db.refresh(db_session)
+    return {"id": request.session_id, "status": "created"}
+
+
+@internal_router.post("/internal/sessions/{session_id}/end")
+def internal_end_session(session_id: str, db: Session = Depends(get_db)):
+    """Internal endpoint - mark session as closed"""
+    db_session = db.query(SessionDB).filter(SessionDB.id == session_id).first()
+    if db_session and not db_session.end_time:
+        db_session.end_time = datetime.now(timezone.utc)
+        db_session.duration_seconds = int((db_session.end_time - db_session.start_time).total_seconds())
+        db.commit()
+    return {"status": "ok"}
+
+
+@internal_router.post("/dashboard/internal/events", status_code=201)
+def internal_log_event(request: EventCreateRequest, db: Session = Depends(get_db)):
+    """Internal endpoint - log attack event from worker"""
+    # Ensure attacker exists
+    db_attacker = db.query(AttackerDB).filter(AttackerDB.ip == request.attacker_ip).first()
+    if not db_attacker:
+        db_attacker = AttackerDB(ip=request.attacker_ip, threat_score=request.severity)
+        db.add(db_attacker)
+        db.commit()
+
+    # Log event using AttackDB model
+    event = AttackDB(
+        session_id=request.session_id,
+        attacker_ip=request.attacker_ip,
+        protocol=request.protocol,
+        attack_type=request.attack_type,
+        payload=request.payload[:1000],
+        severity=request.severity
+    )
+    db.add(event)
+    db.commit()
+
+    return {"status": "logged", "id": event.id}
+
+
+# ===== END INTERNAL ENDPOINTS =====
+
+@router.get("/logout")
+def logout(request: Request):
+    """Logout and clear session"""
+    session = request.cookies.get("dash_session", "")
+    response = RedirectResponse(url="/dashboard/login", status_code=302)
+    clear_session(response, session)
+    return response
+
+
 @router.get("/analytics", response_class=HTMLResponse)
 def analytics_page(request: Request, db: Session = Depends(get_db)):
-    """Serve analytics dashboard page via Jinja2"""
+    """Serve analytics dashboard page via Jinja2 - requires auth"""
+    session = require_dashboard_auth(request)
+    if not session:
+        return RedirectResponse(url="/dashboard/login", status_code=302)
+        
     html = templates.get_template("dashboard_analytics.html").render(
         request=request, active_page="analytics"
     )
@@ -91,7 +209,11 @@ def analytics_page(request: Request, db: Session = Depends(get_db)):
 
 @router.get("/settings", response_class=HTMLResponse)
 def settings_page(request: Request):
-    """Serve dashboard settings page via Jinja2"""
+    """Serve dashboard settings page via Jinja2 - requires auth"""
+    session = require_dashboard_auth(request)
+    if not session:
+        return RedirectResponse(url="/dashboard/login", status_code=302)
+        
     html = templates.get_template("dashboard_settings.html").render(
         request=request, active_page="settings"
     )

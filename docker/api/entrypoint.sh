@@ -5,4 +5,5 @@
 PORT=${API_PORT:-8000}
 
 echo "Starting API on port ${PORT}"
-exec uvicorn app:app --host 0.0.0.0 --port ${PORT}
+# Enable hot-reload with --reload for development
+exec uvicorn app:app --host 0.0.0.0 --port ${PORT} --reload

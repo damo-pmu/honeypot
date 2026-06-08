@@ -15,6 +15,7 @@ from src.api.endpoints.enrichment import router as enrichment_router
 from src.api.endpoints.ioc import router as ioc_router
 from src.api.endpoints.response import router as response_router
 from src.api.endpoints.dashboard_v3 import router as dashboard_v3_router
+from src.api.endpoints.dashboard_v3 import internal_router as internal_router
 from src.api.endpoints.attacks import router as attacks_router
 
 # Import audit middleware
@@ -66,7 +67,7 @@ app.include_router(enrichment_router)
 app.include_router(ioc_router)
 app.include_router(response_router)
 app.include_router(dashboard_v3_router)
-app.include_router(attacks_router)
+app.include_router(internal_router)
 
 
 @app.on_event("startup")
