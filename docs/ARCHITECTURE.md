@@ -92,6 +92,31 @@
 - `GET /analytics/*` - Analytics queries
 - `GET /metrics` - Prometheus
 
+## Templates (Jinja2 Modulaire)
+
+### Architecture de templates
+```
+src/templates/
+├── base.html              # Template de base avec blocks (title, content, extra_css, extra_js, page_styles)
+├── login.html             # Page login - extends base.html
+├── dashboard.html         # Dashboard principal - extends base.html
+├── dashboard_analytics.html  # Analytics - extends base.html
+└── dashboard_settings.html   # Settings - extends base.html
+```
+
+### Blocks disponibles dans base.html
+- `{% block title %}` - Titre de la page
+- `{% block page_styles %}` - Styles CSS spécifiques à la page
+- `{% block content %}` - Contenu principal HTML
+- `{% block extra_css %}` - CSS additionnel dans le head
+- `{% block extra_js %}` - Scripts JS en bas de page
+
+### Design fluide
+- CSS: `/static/css/dashboard.css` - Styles communs et responsive
+- JS: `/static/js/dashboard.js` - Live feed et interactions
+- Fonts: Inter via Google Fonts
+- Couleurs: Thème dark (#04111d fond, #0f0 vert, #5efc98 accents)
+
 ## Sécurité
 
 ### CORS Policy (Phase 2)

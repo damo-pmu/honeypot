@@ -48,8 +48,15 @@ La branche `phase3-work` apporte une refonte complète du dashboard vers une arc
 - Renforcement des tests d’enrichissement, LLM et sessions.
 
 ### Nettoyage
-- Suppression de l’ancien routeur dashboard legacy (`src/api/endpoints/dashboard.py`).
+- Suppression de l'ancien routeur dashboard legacy (`src/api/endpoints/dashboard.py`).
 - Suppression des templates obsolètes `src/templates/dashboard_v2.html` et `src/templates/login.html`.
+- Suppression des templates redondants (`dashboard_home.html`, `minimal.html`, `test_simple.html`).
+
+## Refactor Templates (Jinja2 Modulaire)
+- Rétablissement architecture `base.html` avec blocks modulaires (title, content, page_styles, extra_js)
+- `login.html`, `dashboard.html`, `dashboard_analytics.html`, `dashboard_settings.html` étendent `base.html`
+- Elimination de la duplication HTML/CSS - DRY respecté
+- Design fluide et responsive maintenu dans `/static/css/dashboard.css`
 
 ## Historique des commits
 
