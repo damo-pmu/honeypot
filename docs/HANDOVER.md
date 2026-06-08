@@ -7,12 +7,13 @@ Ce document permet à un autre développeur de reprendre le projet exactement l�
 - Phase 1 et Phase 2 ont été complétées et validées.
 - Phase 3 est implémentée et **fonctionnelle** - Jinja2 migration réussie.
 - Dashboard UI opérationnel : `/dashboard/`, `/dashboard/analytics`, `/dashboard/settings`
+- **Templates architecture modulaire rétablie** : `base.html` avec blocks, tous les templates étendent `base.html`
 - Tests validés en local (à exécuter pour confirmation).
 - Templates servis via `jinja2.Environment` (bypass bug starlette 1.2.1).
 - Documentation mise à jour.
 
 ## Branche de travail et commits
-Tous les travaux de Phase 3 sont dans la branche `phase3-work-final`.
+Tous les travaux de Phase 3 sont maintenant dans la branche `master`.
 
 Un changelog détaillé des commits et des changements est disponible dans `docs/CHANGELOG.md`.
 
@@ -46,13 +47,14 @@ git pull origin phase3-work-final
 
 Les étapes ci-dessous expliquent comment déployer et valider localement la branche `phase3-work`.
 
-## Déploiement local de la branche `phase3-work`
+## Déploiement local (branche master)
 
 1. Se positionner sur la branche :
 
 ```bash
-cd /home/f/Bureau/workspace/damo-pmu/honeypot
-git checkout phase3-work
+cd /home/ubuntu/test-honeypot
+git checkout master
+git pull origin master
 ```
 
 2. Préparer l'environnement : copier et remplir `.env` (ou utiliser `.env.local` pour overrides). Exemple minimal :
@@ -87,11 +89,11 @@ curl http://${HONEYPOT_HOSTNAME:-localhost}:${API_PORT:-8000}/health
 ./scripts/setup.sh --full
 ```
 
-Note : Ne pas oublier de réinitialiser `master` local si tu veux revenir à l'état stable :
+Note : Pour revenir à un état stable, reset master :
 
 ```bash
 git checkout master
-git reset --hard aa4feac
+git reset --hard HEAD~0  # ou commit SHA spécifique
 ```
 
 ## Changelog des corrections récentes (2026-06-07)
@@ -133,13 +135,13 @@ git reset --hard aa4feac
 - `tests/test_audit_fixes_phase1.py` : validation des corrections initiales.
 
 ## Environnement
-- Workspace : `/home/f/Bureau/workspace/damo-pmu/honeypot`
-- Python : `/home/f/Bureau/workspace/damo-pmu/.venv/bin/python`
+- Workspace : `/home/ubuntu/test-honeypot`
+- Python : `python3` (venv intégré ou `.venv`)
 - Commande de test locale :
 
 ```bash
-cd /home/f/Bureau/workspace/damo-pmu/honeypot
-/home/f/Bureau/workspace/damo-pmu/.venv/bin/python -m pytest tests/test_audit_fixes_phase1.py tests/test_audit_fixes_phase2.py tests/test_audit_fixes_phase3.py -v --tb=no
+cd /home/ubuntu/test-honeypot
+python3 -m pytest tests/test_audit_fixes_phase1.py tests/test_audit_fixes_phase2.py tests/test_audit_fixes_phase3.py -v --tb=short
 ```
 
 ## Reprise immédiate
@@ -160,7 +162,10 @@ cd /home/f/Bureau/workspace/damo-pmu/honeypot
 - Routes UI actuelles (`/dashboard/`, `/dashboard/analytics`, `/dashboard/settings`) **ne sont pas protégées** - voir `docs/PHASE3_AUTH_PLAN.md`.
 - La politique CORS est déjà restreinte dans `app.py` via `CORS_ALLOWED_ORIGINS`.
 
-## Authentication Implementation Plan
+### Architecture Templates
+- **Modulaire** : `base.html` avec blocks (title, content, page_styles, extra_js)
+- **Étendue par** : `login.html`, `dashboard.html`, `dashboard_analytics.html`, `dashboard_settings.html`
+- **Assets** : `/static/css/dashboard.css` (fluide, dark theme), `/static/js/dashboard.js` (live feed)
 Voir `docs/PHASE3_AUTH_PLAN.md` pour le plan complet d'implémentation de l'authentification UI.
 
 ### API public / privé
@@ -198,7 +203,8 @@ Voir `docs/PHASE3_AUTH_PLAN.md` pour le plan complet d'implémentation de l'auth
 ## Liste de vérification de reprise
 
 - [x] Dashboard UI fonctionnel (Jinja2 migration OK)
-- [x] Tests pytest passent (22/22 test_audit_fixes_phase3.py)
+- [x] Templates architecture modulaire (base.html + blocks)
+- [x] Tests pytest passent
 - [x] Le router déployé est bien `dashboard_v3_router`
 - [x] Les endpoints `/api/analytics/*` et `/api/export/*` fonctionnent
 - [ ] Le WebSocket `/ws/live` accepte plusieurs clients
