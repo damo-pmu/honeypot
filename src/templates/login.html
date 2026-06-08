@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+
+{% block title %}Connexion Honeypot SOC{% endblock %}
+
+{% block page_styles %}
+.login-shell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+}
+.login-card {
+    background: #0f1924;
+    padding: 40px;
+    border-radius: 12px;
+    border: 1px solid #1f2937;
+    max-width: 400px;
+    width: 100%;
+}
+.login-card h1 {
+    color: #0f0;
+    margin-bottom: 20px;
+    text-align: center;
+}
+.login-card input {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 16px;
+    background: #000;
+    border: 1px solid #333;
+    color: #fff;
+    border-radius: 6px;
+    font-size: 16px;
+}
+.login-card button {
+    width: 100%;
+    padding: 12px;
+    background: #0f0;
+    color: #000;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.error {
+    color: #f66;
+    margin-bottom: 16px;
+    text-align: center;
+}
+{% endblock %}
+
+{% block content %}
+<div class="login-shell">
+    <section class="login-card">
+        <h1>🔒 Honeypot SOC</h1>
+        <form method="POST" action="/dashboard/login">
+            <label for="password" style="display: block; margin-bottom: 8px; color: #ccc;">Mot de passe</label>
+            <input id="password" name="password" type="password" placeholder="Entrer le mot de passe" required autofocus />
+            <button type="submit">Se connecter</button>
+        </form>
+        {% if error %}
+        <div class="error">{{ error }}</div>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}

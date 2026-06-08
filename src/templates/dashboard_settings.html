@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+
+{% block title %}Settings Dashboard{% endblock %}
+
+{% block page_styles %}
+.container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+.section { background: #1a1a1a; padding: 25px; border-radius: 8px; margin-bottom: 20px; }
+.section h2 { color: #0f0; margin-bottom: 15px; border-bottom: 1px solid #333; padding-bottom: 8px; }
+.form-row { margin-bottom: 15px; }
+.form-row label { display: block; margin-bottom: 5px; color: #999; font-size: 14px; }
+.form-row input, .form-row select { 
+    width: 100%; 
+    padding: 10px; 
+    background: #000; 
+    border: 1px solid #333; 
+    color: #fff; 
+    border-radius: 4px;
+}
+.btn { padding: 10px 20px; background: #0f0; color: #000; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+.btn:hover { background: #0d0; }
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2 style="margin-bottom: 20px;">⚙️ Dashboard Settings</h2>
+    
+    <div class="section">
+        <h2>🔌 Connection Settings</h2>
+        <div class="form-row">
+            <label>HONEYPOT_HOSTNAME</label>
+            <input type="text" value="honeypot.hiddenlabs.cc" disabled />
+        </div>
+        <div class="form-row">
+            <label>Dashboard Port</label>
+            <input type="number" value="8000" disabled />
+        </div>
+    </div>
+    
+    <div class="section">
+        <h2>🔒 Security Configuration</h2>
+        <div class="form-row">
+            <label>CORS_ALLOWED_ORIGINS</label>
+            <input type="text" value="configured" disabled />
+        </div>
+        <div class="form-row">
+            <label>Session Cookie Name</label>
+            <input type="text" value="dash_session" disabled />
+        </div>
+    </div>
+    
+    <div class="section">
+        <h2>📊 API Endpoints</h2>
+        <ul style="margin-left: 20px; line-height: 2;">
+            <li><a href="/dashboard/api/stats">/dashboard/api/stats</a> - Dashboard statistics</li>
+            <li><a href="/dashboard/api/live-feed">/dashboard/api/live-feed</a> - Real-time events</li>
+            <li><a href="/dashboard/api/analytics/threat-heatmap">/api/analytics/threat-heatmap</a> - Threat heatmap</li>
+            <li><a href="/dashboard/api/health">/api/health</a> - Health check</li>
+        </ul>
+    </div>
+    
+    <div style="text-align: center; margin-top: 20px;">
+        <a href="/dashboard/" class="btn" style="background: #333;">← Back to Dashboard</a>
+    </div>
+</div>
+{% endblock %}

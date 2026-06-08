@@ -2,51 +2,76 @@
 
 {% block title %}Honeypot SOC Dashboard{% endblock %}
 
-{% block content %}
-<section class="dashboard-header">
-    <div>
-        <h1 class="dashboard-title">Honeypot SOC Dashboard</h1>
-        <p class="dashboard-meta">Vue d’ensemble en temps réel pour les analystes, avec flux et export de rapports.</p>
-    </div>
-    <div class="dashboard-meta">
-        <a href="javascript:location.reload()" class="secondary-button" id="refresh-button">Refresh</a>
-        <a href="/dashboard/api/export/threat-report" class="action-button">Exporter JSON</a>
-        <a href="/dashboard/logout" class="secondary-button">Logout</a>
-    </div>
-</section>
-
-<div class="stats-grid">
-    <article class="card">
-        <p class="metric-label">Active Sessions</p>
-        <p class="metric-value">{{ stats.active_sessions or 0 }}</p>
-    </article>
-    <article class="card">
-        <p class="metric-label">Unique Attackers</p>
-        <p class="metric-value">{{ stats.unique_attackers or 0 }}</p>
-    </article>
-    <article class="card">
-        <p class="metric-label">High Risk</p>
-        <p class="metric-value">{{ stats.high_threat_count or 0 }}</p>
-    </article>
-    <article class="card">
-        <p class="metric-label">IOCs Extracted</p>
-        <p class="metric-value">{{ stats.ioc_count or 0 }}</p>
-    </article>
-</div>
-
-<section class="panel">
-    <div class="panel-header">
-        <h2>Recent Activity</h2>
-        <p class="dashboard-meta" id="live-feed-fallback">Flux temps réel en cours...</p>
-    </div>
-    <div id="live-feed" class="live-feed">Chargement...</div>
-</section>
+{% block page_styles %}
+.dashboard-nav {
+    display: flex; justify-content: space-between; align-items: center;
+    background: #111; padding: 12px 20px; border-bottom: 1px solid #333; margin-bottom: 20px;
+}
+.dashboard-nav h1 { font-size: 18px; color: #0f0; margin: 0; }
+.nav-links { display: flex; gap: 12px; }
+.nav-links a { color: #ccc; text-decoration: none; padding: 6px 12px; border-radius: 4px; transition: all 0.2s; font-size: 14px; }
+.nav-links a:hover { background: #222; color: #0f0; }
+.nav-links a.active { background: #0f0; color: #000; font-weight: 600; }
 {% endblock %}
 
-{% block scripts %}
+{% block content %}
+<nav class="dashboard-nav">
+    <div style="display: flex; align-items: center;">
+        <span class="status-indicator status-online" style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #0f0; margin-right: 8px;"></span>
+        <span style="color: #0f0; font-weight: 600;">🛡️ Honeypot SOC Dashboard</span>
+    </div>
+    <div class="nav-links">
+        <a href="/dashboard/" class="active">Dashboard</a>
+        <a href="/dashboard/analytics">Analytics</a>
+        <a href="/dashboard/settings">Settings</a>
+        <a href="/dashboard/api/health">API Health</a>
+    </div>
+</nav>
+
+<main class="app-shell">
+    <section class="dashboard-header">
+        <div>
+            <h1 class="dashboard-title">Honeypot SOC Dashboard</h1>
+            <p class="dashboard-meta">Vue d'ensemble en temps réel pour les analystes, avec flux et export de rapports.</p>
+        </div>
+        <div class="dashboard-meta">
+            <a href="javascript:location.reload()" class="secondary-button" id="refresh-button">Refresh</a>
+            <a href="/dashboard/api/export/threat-report" class="action-button">Exporter JSON</a>
+        </div>
+    </section>
+
+    <div class="stats-grid">
+        <article class="card">
+            <p class="metric-label">Active Sessions</p>
+            <p class="metric-value">{{ stats['active_sessions'] | default(0) }}</p>
+        </article>
+        <article class="card">
+            <p class="metric-label">Unique Attackers</p>
+            <p class="metric-value">{{ stats['unique_attackers'] | default(0) }}</p>
+        </article>
+        <article class="card">
+            <p class="metric-label">High Risk</p>
+            <p class="metric-value">{{ stats['high_threat_count'] | default(0) }}</p>
+        </article>
+        <article class="card">
+            <p class="metric-label">IOCs Extracted</p>
+            <p class="metric-value">{{ stats['ioc_count'] | default(0) }}</p>
+        </article>
+    </div>
+
+    <section class="panel">
+        <div class="panel-header">
+            <h2>Recent Activity</h2>
+            <p class="dashboard-meta" id="live-feed-fallback">Flux temps réel en cours...</p>
+        </div>
+        <div id="live-feed" class="live-feed">Chargement...</div>
+    </section>
+</main>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/dashboard.js"></script>
 <script>
-    window.dashboardConfig = {
-        feedPath: '/dashboard/api/live-feed?limit=12'
-    };
+    window.dashboardConfig = { feedPath: '/dashboard/api/live-feed?limit=12' };
 </script>
 {% endblock %}

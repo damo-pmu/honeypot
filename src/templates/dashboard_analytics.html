@@ -1,42 +1,51 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Analytics Dashboard</title>
-    <link rel="stylesheet" href="/static/css/dashboard.css" />
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>Analytics Dashboard</h1>
-            <a href="/dashboard/">Back to Dashboard</a>
+{% extends 'base.html' %}
+
+{% block title %}Analytics Dashboard{% endblock %}
+
+{% block page_styles %}
+.container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+.header { margin-bottom: 30px; }
+.header h1 { font-size: 28px; color: #fff; }
+.header a { margin-left: 20px; color: #0f0; text-decoration: none; }
+.section { background: #1a1a1a; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+.section h2 { color: #0f0; margin-bottom: 15px; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.card { background: #222; padding: 15px; border-radius: 4px; }
+pre { background: #000; padding: 10px; border-radius: 4px; overflow-x: auto; }
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="header">
+        <h1>Analytics Dashboard</h1>
+        <a href="/dashboard/">← Back to Dashboard</a>
+    </div>
+    
+    <div class="grid">
+        <div class="section card">
+            <h2>Threat Heatmap (24h)</h2>
+            <pre id="heatmap-data">Loading...</pre>
         </div>
         
-        <div class="grid">
-            <div class="card">
-                <h2>Threat Heatmap (24h)</h2>
-                <pre>{{ heatmap | tojson | safe }}</pre>
-            </div>
-            
-            <div class="card">
-                <h2>Attacker Profiles</h2>
-                <pre>{{ profiles | tojson | safe }}</pre>
-            </div>
-            
-            <div class="card">
-                <h2>Command Patterns</h2>
-                <pre>{{ patterns | tojson | safe }}</pre>
-            </div>
-            
-            <div class="card">
-                <h2>Endpoints</h2>
-                <ul>
-                    <li><a href="/dashboard/api/analytics/threat-heatmap">/api/analytics/threat-heatmap</a></li>
-                    <li><a href="/dashboard/api/analytics/attacker-profiles">/api/analytics/attacker-profiles</a></li>
-                    <li><a href="/dashboard/api/analytics/command-patterns">/api/analytics/command-patterns</a></li>
-                    <li><a href="/dashboard/api/analytics/ioc-summary">/api/analytics/ioc-summary</a></li>
-                </ul>
-            </div>
+        <div class="section card">
+            <h2>Attacker Profiles</h2>
+            <pre id="profiles-data">Loading...</pre>
+        </div>
+        
+        <div class="section card">
+            <h2>Command Patterns</h2>
+            <pre id="patterns-data">Loading...</pre>
+        </div>
+        
+        <div class="section card">
+            <h2>API Endpoints</h2>
+            <ul>
+                <li><a href="/dashboard/api/analytics/threat-heatmap">/api/analytics/threat-heatmap</a></li>
+                <li><a href="/dashboard/api/analytics/attacker-profiles">/api/analytics/attacker-profiles</a></li>
+                <li><a href="/dashboard/api/analytics/command-patterns">/api/analytics/command-patterns</a></li>
+                <li><a href="/dashboard/api/analytics/ioc-summary">/api/analytics/ioc-summary</a></li>
+            </ul>
         </div>
     </div>
-</body>
-</html>
+</div>
+{% endblock %}
