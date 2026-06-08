@@ -9,7 +9,7 @@ Tous endpoints utilisent :
 - Responses : Pydantic models
 - Security middleware : `AuditMiddleware` sur toutes les routes
 
-> Note : cette documentation est mise à jour au fur et à mesure de l’avancement. Les sections dashboard v3 et analytics sont en cours d’alignement avec le code actuel.
+> Note : cette documentation est alignée avec le code actuel. La branche `master` contient la version stable et fonctionnelle.
 
 ---
 
@@ -244,7 +244,11 @@ UNKNOWN → cisco running_config
 - Le dashboard utilise un cookie de session `dash_session` (HttpOnly, SameSite=Strict).
 - Password via `DASHBOARD_PASSWORD`.
 
-### Real-time flow
+### Templates Architecture
+L'UI utilise une architecture Jinja2 modulaire avec `base.html` et blocks :
+- **base.html** : Structure commune, blocks `title`, `content`, `page_styles`, `extra_js`
+- **login.html**, **dashboard.html**, **dashboard_analytics.html**, **dashboard_settings.html** : étendent `base.html`
+- **Assets** : `/static/css/dashboard.css` (dark theme, responsive), `/static/js/dashboard.js` (live feed)
 
 ```mermaid
 flowchart LR
@@ -292,9 +296,17 @@ Routes utilisées par le worker Cowrie, pas exposées publiquement.
 | POST | `/dashboard/internal/sessions` | Sessions (nouveau) |
 
 ### CORS
+Configuration restrictive via environnement :
+
+| Variable | Purpose |
+|----------|---------|
+| `HONEYPOT_HOSTNAME` | Hostname pour origines génériques |
+| `CORS_ALLOWED_ORIGINS` | Liste comma-separated d'origines autorisées |
+
+Default: ports 3000, 5000, 9090 sur hostname configuré.
 ```python
 # app.py
-allow_origins = ["*"]  # Pour Grafana intégration
-allow_methods = ["*"]
-allow_headers = ["*"]
+allow_methods = ["GET", "POST", "PUT", "DELETE"]
+allow_headers = ["Content-Type", "Authorization"]
+allow_credentials = True
 ```
