@@ -121,14 +121,14 @@ def process_event(line: str):
         password = event.get("password", "")
         
         send_to_api("/attackers", {"ip": src_ip})
-        send_to_api("/dashboard/internal/sessions", {
+        send_to_api("/internal/sessions", {
             "session_id": session_id,
             "attacker_ip": src_ip,
             "protocol": "SSH"
         })
         
-        # Log attack event to NEW internal endpoint
-        send_to_api("/dashboard/internal/events", {
+        # Log attack event to internal endpoint
+        send_to_api("/internal/events", {
             "session_id": session_id,
             "attacker_ip": src_ip,
             "protocol": "SSH",
@@ -153,8 +153,8 @@ def process_event(line: str):
         
         process_command_with_ioc(command, session_id, src_ip)
         
-        # Log attack to NEW internal endpoint
-        send_to_api("/dashboard/internal/events", {
+        # Log attack to internal endpoint
+        send_to_api("/internal/events", {
             "session_id": session_id,
             "attacker_ip": src_ip,
             "protocol": "SSH",
@@ -169,7 +169,7 @@ def process_event(line: str):
         url = event.get("url", "")
         if url:
             process_command_with_ioc(url, "download", src_ip)
-            send_to_api("/dashboard/internal/events", {
+            send_to_api("/internal/events", {
                 "session_id": session_id,
                 "attacker_ip": src_ip,
                 "protocol": "SSH",
@@ -180,7 +180,7 @@ def process_event(line: str):
     
     elif "session.connect" in event_id:
         send_to_api("/attackers", {"ip": src_ip})
-        send_to_api("/dashboard/internal/sessions", {
+        send_to_api("/internal/sessions", {
             "session_id": session_id,
             "attacker_ip": src_ip,
             "protocol": "SSH"
