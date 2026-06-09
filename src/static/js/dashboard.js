@@ -33,10 +33,13 @@ function renderLiveItems(items) {
 
     liveFeedElement.innerHTML = items.map(item => {
         const time = item.timestamp || item.time || 'n/a';
-        const text = item.description || item.event || item.message || 'Événement inconnu';
+        const data = item.data || {};
+        const text = data.payload || data.description || data.event || data.message || 'Événement inconnu';
+        const attackType = data.attack_type || 'SSH';
+        const attackerIp = data.attacker_ip || 'inconnu';
         return `
             <div class="feed-item">
-                <div class="meta">${time}</div>
+                <div class="meta">${time} | ${attackType} | ${attackerIp}</div>
                 <div class="message">${text}</div>
             </div>
         `;
