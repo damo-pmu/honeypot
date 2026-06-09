@@ -158,7 +158,7 @@ def internal_end_session(session_id: str, db: Session = Depends(get_db)):
     return {"status": "ok"}
 
 
-@internal_router.post("/dashboard/internal/events", status_code=201)
+@internal_router.post("/events", status_code=201)
 def internal_log_event(request: EventCreateRequest, db: Session = Depends(get_db)):
     """Internal endpoint - log attack event from worker"""
     # Ensure attacker exists
