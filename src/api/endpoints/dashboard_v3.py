@@ -122,6 +122,64 @@ class EventCreateRequest(BaseModel):
     severity: int = 50
 
 
+@internal_router.get("/sessions/{session_id}/with-attacks", response_model=dict)
+def get_session_with_attacks(session_id: str, db: Session = Depends(get_db)):
+    """Get session with all attacks and commands - for linking with map markers"""
+    from src.core.database import AttackerDB, CommandDB
+    
+    session = db.query(SessionDB).filter(SessionDB.id == session_id).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    attacker = db.query(AttackerDB).filter(
+        AttackerDB.ip == session.attacker_ip
+    ).first()
+    
+    attacks = db.query(AttackDB).filter(
+        AttackDB.session_id == session_id
+    ).order_by(AttackDB.timestamp).all()
+    
+    commands = db.query(CommandDB).filter(
+        CommandDB.session_id == session_id
+    ).order_by(CommandDB.timestamp).all()
+    
+    timeline = []
+    for a in attacks:
+        timeline.append({
+            "type": "attack",
+            "timestamp": a.timestamp.isoformat() if a.timestamp else None,
+            "data": {
+                "attack_type": a.attack_type,
+                "severity": a.severity,
+                "payload": a.payload
+            }
+        })
+    for c in commands:
+        timeline.append({
+            "type": "command",
+            "timestamp": c.timestamp.isoformat() if c.timestamp else None,
+            "data": {
+                "command": c.command,
+                "flagged": c.flagged
+            }
+        })
+    
+    timeline.sort(key=lambda x: x["timestamp"] or "")
+    
+    return {
+        "session": {
+            "id": session.id,
+            "attacker_ip": session.attacker_ip,
+            "protocol": session.protocol,
+            "start_time": session.start_time.isoformat() if session.start_time else None,
+            "geoip": attacker.geoip if attacker else None
+        },
+        "timeline": timeline,
+        "attacks_count": len(attacks),
+        "commands_count": len(commands)
+    }
+
+
 # ===== INTERNAL ENDPOINTS (unprotected - used by worker) =====
 
 # Separate router for internal endpoints (worker calls without /dashboard prefix)

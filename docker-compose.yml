@@ -17,7 +17,8 @@ services:
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
       - LOCAL_LLM_MODEL=${LOCAL_LLM_MODEL:-}
       - DATABASE_URL=postgresql://honeypot:${PG_PASS:-demo}@${DB_HOST:-postgres}:${DB_PORT:-5432}/${DB_NAME:-honeypot}
-      - REDIS_URL=redis://${REDIS_HOST:-redis}:${REDIS_PORT:-6379}
+      - REDIS_URL=redis://redis:6379
+      - MMDB_PATH=/app/data/geolite2.mmdb
     volumes:
       - api_logs:/app/logs
       - api_data:/app/data
@@ -54,6 +55,8 @@ services:
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
       - rabbitmq_logs:/var/log/rabbitmq
+    environment:
+      - RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS=-rabbitmq_management listener [{port,15672}]
 
   # SSH/Telnet Honeypot (Cowrie)
   cowrie:
@@ -70,21 +73,41 @@ services:
     environment:
       - HONEYPOT_API_URL=http://${API_HOST:-api}:${API_PORT:-8000}/events
 
-  # Worker: Cowrie events → API
+  # Worker: Cowrie events → RabbitMQ (producer only)
   worker:
     build:
       context: .
       dockerfile: docker/worker/Dockerfile
     depends_on:
       - cowrie
-      - api
+      - rabbitmq
+      - redis
     volumes:
       - cowrie_logs:/cowrie/var/log/cowrie:ro
       - worker_logs:/app/logs
+      - api_data:/app/data  # For offset persistence
     environment:
       - COWRIE_LOG=/cowrie/var/log/cowrie/cowrie.json
       - API_URL=http://${API_HOST:-api}:${API_PORT:-8000}
       - AUDIT_LOG_PATH=/app/logs/audit.log
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+
+  # RabbitMQ Consumer (resilient event processing)
+  rabbitmq-consumer:
+    build:
+      context: .
+      dockerfile: docker/worker/Dockerfile
+    depends_on:
+      - rabbitmq
+      - api
+      - redis
+    volumes:
+      - worker_logs:/app/logs
+    environment:
+      - API_URL=http://${API_HOST:-api}:${API_PORT:-8000}
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - REDIS_URL=redis://${REDIS_HOST:-redis}:${REDIS_PORT:-6379}
+    command: python -c "from src.messaging.consumer import consume_with_ack; import asyncio; asyncio.run(consume_with_ack())"
 
   # Maintenance service (retention cleanup, healthcheck filtering)
   maintenance:
@@ -131,6 +154,34 @@ services:
       - grafana_data:/var/lib/grafana
       - ./grafana/datasource.yaml:/etc/grafana/provisioning/datasources/datasource.yaml:ro
 
+  # Tor service for realistic attack seeding
+  tor:
+    image: dperson/torproxy
+    environment:
+      - TZ=Europe/Paris
+    volumes:
+      - tor_logs:/var/log/tor
+    restart: unless-stopped
+
+  # Seed worker - uses Tor for realistic attacks
+  seed-worker:
+    build:
+      context: .
+      dockerfile: docker/seed/Dockerfile
+    depends_on:
+      - tor
+      - cowrie
+      - api
+    environment:
+      - TOR_PROXY=tor:9050
+      - SSH_HOST=host.docker.internal
+      - SSH_PORT=${SSH_PORT:-22}
+      - PUBLIC_IP=${PUBLIC_IP}
+      - SEED_INTERVAL=${SEED_INTERVAL:-300}
+    volumes:
+      - seed_logs:/app/logs
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   postgres_logs:
@@ -145,3 +196,5 @@ volumes:
   api_data:
   prometheus_data:
   grafana_data:
+  tor_logs:
+  seed_logs:

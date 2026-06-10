@@ -35,24 +35,24 @@ class StatisticsService:
         return self.stats_repo.get_geoip_markers(limit)
     
     def get_live_feed(self, limit: int = 50) -> List[Dict[str, Any]]:
-        """Get recent attacks for live feed - mapped to filter types"""
-        from src.core.database import AttackDB
+        """Get recent attacks for live feed with geoip data"""
+        from src.core.database import AttackDB, AttackerDB
         attacks = self.db.query(AttackDB).order_by(
             desc(AttackDB.timestamp)
         ).limit(limit).all()
         
-        # Map attack types to frontend filter values
-        event_type_map = {
-            "BRUTE_FORCE": "ssh_attempt",
-            "COMMAND_EXECUTION": "command",
-            "MALWARE_DOWNLOAD": "attack",
-            "AUTOMATED_SCANNER": "ssh_attempt"
-        }
+        # Build IP -> attacker lookup
+        ips = list(set(a.attacker_ip for a in attacks))
+        attackers = {a.ip: a for a in self.db.query(AttackerDB).filter(AttackerDB.ip.in_(ips)).all()}
+        
+        def get_geoip(ip_addr: str):
+            attacker = attackers.get(ip_addr)
+            return attacker.geoip if attacker else None
         
         return [
             {
                 "id": a.id,
-                "type": event_type_map.get(a.attack_type, "attack"),
+                "type": "attack",
                 "timestamp": a.timestamp.isoformat(),
                 "data": {
                     "attack_type": a.attack_type,
@@ -60,7 +60,8 @@ class StatisticsService:
                     "attacker_ip": a.attacker_ip,
                     "severity": a.severity,
                     "payload": a.payload[:200] if a.payload else None,
-                    "session_id": a.session_id
+                    "session_id": a.session_id,
+                    "geoip": get_geoip(a.attacker_ip)
                 }
             }
             for a in attacks
