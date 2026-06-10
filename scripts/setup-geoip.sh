@@ -2,7 +2,8 @@
 set -e
 
 # Idempotent GeoIP MMDB setup
-MMDB_DIR="/app/data"
+# Uses local ./data for download, mounted as /app/data in Docker
+MMDB_DIR="$(cd "$(dirname "$0")/.." && pwd)/data"
 MMDB_FILE="$MMDB_DIR/geolite2.mmdb"
 MMDB_URL="https://github.com/P3TER/mmdb/raw/main/GeoLite2-City.mmdb"
 

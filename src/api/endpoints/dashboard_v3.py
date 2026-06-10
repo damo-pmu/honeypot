@@ -71,23 +71,10 @@ def require_dashboard_auth(request: Request):
 
 
 # UI Routes (using Jinja2 templates)
-@router.get("/", response_class=HTMLResponse)
+@router.get("/")
 def dashboard_home(request: Request, db: Session = Depends(get_db)):
-    """Serve dashboard home page via Jinja2 - requires auth"""
-    session = require_dashboard_auth(request)
-    if not session:
-        return RedirectResponse(url="/dashboard/login", status_code=302)
-    
-    try:
-        service = StatisticsService(db)
-        stats = service.get_dashboard_stats()
-    except Exception:
-        stats = {"active_sessions": 0, "unique_attackers": 0, "high_threat_count": 0, "ioc_count": 0}
-
-    html = templates.get_template("dashboard.html").render(
-        request=request, stats=stats, active_page="dashboard"
-    )
-    return HTMLResponse(content=html)
+    """Redirect to World Map as single source of truth for main dashboard"""
+    return RedirectResponse(url="/dashboard/map", status_code=302)
 
 
 @router.get("/login", response_class=HTMLResponse)

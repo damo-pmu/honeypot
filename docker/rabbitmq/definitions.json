@@ -1,0 +1,72 @@
+{
+  "exchanges": [
+    {
+      "name": "cowrie.events",
+      "type": "topic",
+      "durable": true,
+      "auto_delete": false,
+      "vhost": "/"
+    }
+  ],
+  "queues": [
+    {
+      "name": "cowrie.auth",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "",
+        "x-dead-letter-routing-key": "cowrie.dlq"
+      },
+      "vhost": "/"
+    },
+    {
+      "name": "cowrie.commands",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "",
+        "x-dead-letter-routing-key": "cowrie.dlq"
+      },
+      "vhost": "/"
+    },
+    {
+      "name": "cowrie.sessions",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "",
+        "x-dead-letter-routing-key": "cowrie.dlq"
+      },
+      "vhost": "/"
+    },
+    {
+      "name": "cowrie.dlq",
+      "durable": true,
+      "auto_delete": false,
+      "vhost": "/"
+    }
+  ],
+  "bindings": [
+    {
+      "source": "cowrie.events",
+      "destination": "cowrie.auth",
+      "destination_type": "queue",
+      "routing_key": "auth",
+      "vhost": "/"
+    },
+    {
+      "source": "cowrie.events",
+      "destination": "cowrie.commands",
+      "destination_type": "queue",
+      "routing_key": "commands",
+      "vhost": "/"
+    },
+    {
+      "source": "cowrie.events",
+      "destination": "cowrie.sessions",
+      "destination_type": "queue",
+      "routing_key": "sessions",
+      "vhost": "/"
+    }
+  ]
+}

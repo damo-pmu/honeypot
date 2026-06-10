@@ -7,11 +7,16 @@ from pathlib import Path
 import requests
 from typing import Optional, List
 
+from src.messaging import publish_event, connect, setup_exchange_and_queues
+
 API_URL = os.getenv("API_URL", "http://api:8000")
 COWRIE_LOG = os.getenv("COWRIE_LOG", "/cowrie/var/log/cowrie/cowrie.json")
 
 # Session tracking for response engine
 session_commands: dict = {}
+
+# RabbitMQ ready flag
+rabbitmq_ready = False
 
 
 def parse_cowrie_event(line: str) -> dict:
@@ -26,6 +31,7 @@ def parse_cowrie_event(line: str) -> dict:
 def send_to_api(endpoint: str, data: dict) -> bool:
     """Send data to honeypot API"""
     try:
+        # Fix: endpoint should match router paths (internal_router has NO prefix)
         r = requests.post(f"{API_URL}{endpoint}", json=data, timeout=5)
         return r.status_code in (200, 201)
     except requests.RequestException:
@@ -35,7 +41,7 @@ def send_to_api(endpoint: str, data: dict) -> bool:
 def scan_for_iocs(text: str) -> dict:
     """Extract IOCs from text (inline to avoid import issues)"""
     from src.analytics.ioc_scanner import scan_for_iocs as analytics_scan_for_iocs
-
+    
     results = analytics_scan_for_iocs(text)
     return {
         "hashes": [ioc.value for ioc in results["hashes"]],
@@ -99,8 +105,23 @@ def process_command_with_ioc(command: str, session_id: str, src_ip: str):
         })
 
 
+def to_rabbitmq(event_type: str, data: dict):
+    """Publish event to RabbitMQ (non-blocking)"""
+    import asyncio
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            asyncio.create_task(publish_event(event_type, event_type, data))
+        else:
+            asyncio.run(publish_event(event_type, event_type, data))
+    except Exception as e:
+        print(f"[worker] RabbitMQ publish error: {e}")
+
+
 def process_event(line: str):
     """Process a single Cowrie event line"""
+    global rabbitmq_ready
+    
     event = parse_cowrie_event(line)
     if not event:
         return
@@ -108,15 +129,13 @@ def process_event(line: str):
     event_id = event.get("eventid", "")
     src_ip = event.get("src_ip", "unknown")
     src_port = event.get("src_port", 0)
-    session_id = event.get("session", f"{src_ip}:{src_port}")  # Use Cowrie's session UUID
+    session_id = event.get("session", f"{src_ip}:{src_port}")
     
     # Skip healthcheck connections (Cowrie internal healthchecks on 127.0.0.1 with 0 duration)
-    # These appear as cowrie.session.connect/cowrie.session.closed with no login/command events
     if src_ip == "127.0.0.1" and "session.connect" in event_id and "login" not in event_id and "command" not in event_id:
         return  # Skip pure connection events from localhost (healthchecks)
     
     if "login" in event_id:
-        # Login attempt - create attacker + session
         username = event.get("username", "")
         password = event.get("password", "")
         
@@ -128,13 +147,22 @@ def process_event(line: str):
         })
         
         # Log attack event to internal endpoint
-        send_to_api("/internal/events", {
+        send_to_api("/events", {
             "session_id": session_id,
             "attacker_ip": src_ip,
             "protocol": "SSH",
             "attack_type": "BRUTE_FORCE",
             "payload": f"{username}:{password}",
             "severity": 70 if password else 50
+        })
+        
+        # Publish to RabbitMQ for resilient processing
+        to_rabbitmq("auth", {
+            "session_id": session_id,
+            "attacker_ip": src_ip,
+            "username": username,
+            "password": password,
+            "event_type": "login"
         })
     
     elif "command" in event_id:
@@ -154,7 +182,7 @@ def process_event(line: str):
         process_command_with_ioc(command, session_id, src_ip)
         
         # Log attack to internal endpoint
-        send_to_api("/internal/events", {
+        send_to_api("/events", {
             "session_id": session_id,
             "attacker_ip": src_ip,
             "protocol": "SSH",
@@ -163,19 +191,33 @@ def process_event(line: str):
             "severity": get_severity(command)
         })
         
-        threat_class = get_threat_class(session_commands[session_id])
+        # Publish to RabbitMQ
+        to_rabbitmq("commands", {
+            "session_id": session_id,
+            "attacker_ip": src_ip,
+            "command": command,
+            "interaction_count": interaction_count
+        })
         
+        threat_class = get_threat_class(session_commands[session_id])
+    
     elif "download" in event_id:
         url = event.get("url", "")
         if url:
             process_command_with_ioc(url, "download", src_ip)
-            send_to_api("/internal/events", {
+            send_to_api("/events", {
                 "session_id": session_id,
                 "attacker_ip": src_ip,
                 "protocol": "SSH",
                 "attack_type": "MALWARE_DOWNLOAD",
                 "payload": url,
                 "severity": 95
+            })
+            
+            to_rabbitmq("downloads", {
+                "session_id": session_id,
+                "attacker_ip": src_ip,
+                "url": url
             })
     
     elif "session.connect" in event_id:
@@ -185,10 +227,26 @@ def process_event(line: str):
             "attacker_ip": src_ip,
             "protocol": "SSH"
         })
+        
+        to_rabbitmq("sessions", {
+            "session_id": session_id,
+            "attacker_ip": src_ip,
+            "protocol": "SSH",
+            "event_type": "connect"
+        })
     
     elif "session.closed" in event_id:
         # End session via internal endpoint
-        requests.post(f"{API_URL}/internal/sessions/{session_id}/end")
+        try:
+            requests.post(f"{API_URL}/internal/sessions/{session_id}/end")
+        except:
+            pass
+        
+        to_rabbitmq("sessions", {
+            "session_id": session_id,
+            "attacker_ip": src_ip,
+            "event_type": "closed"
+        })
 
 
 def ingest_logs():

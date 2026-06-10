@@ -19,6 +19,8 @@
   .dashboard-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
   .dashboard-title { margin: 0; color: #0f0; font-size: 24px; }
   .dashboard-meta { color: #888; font-size: 13px; }
+  .action-button { background: #0f0; color: #000; padding: 6px 12px; border-radius: 4px; text-decoration: none; font-size: 14px; transition: all 0.2s; }
+  .action-button:hover { background: #0dd; }
   .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 16px; }
   .card { background: #111; border: 1px solid #222; border-radius: 8px; padding: 16px; }
   .metric-label { margin: 0; color: #888; font-size: 12px; }
@@ -49,6 +51,9 @@
     <div>
       <h1 class="dashboard-title">🌍 World Attack Map</h1>
       <p class="dashboard-meta">Interactive map • Click marker or attack to link details</p>
+    </div>
+    <div class="dashboard-meta">
+      <a href="/dashboard/api/export/threat-report" class="action-button">Exporter JSON</a>
     </div>
   </section>
 
@@ -138,6 +143,18 @@
         <div class="attack-type">${d.type}</div>
       </div>
     `).join('');
+
+    // Add Load More button
+    const loadMoreBtn = document.getElementById('load-more-btn');
+    if (loadMoreBtn) loadMoreBtn.remove();
+    if (byIP.size >= 100) {
+      const btn = document.createElement('button');
+      btn.id = 'load-more-btn';
+      btn.textContent = 'Load More';
+      btn.style.cssText = 'width:100%;padding:10px;background:#333;color:#0f0;border:none;border-radius:0 0 12px 12px;cursor:pointer;';
+      btn.onclick = () => loadAttacks(100); // Next page
+      document.querySelector('.attack-feed').appendChild(btn);
+    }
 
     markerCluster.clearLayers();
     items.forEach(a => {

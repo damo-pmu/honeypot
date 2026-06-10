@@ -59,3 +59,13 @@ async def enrich_ip(ip: str) -> Dict[str, Any]:
     if not result:
         result = await lookup_online(ip)
     return result or {}
+
+
+def enrich_ip_sync(ip: str) -> Dict[str, Any]:
+    """Synchronous wrapper for enrich_ip"""
+    try:
+        loop = asyncio.get_event_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+    return loop.run_until_complete(enrich_ip(ip))

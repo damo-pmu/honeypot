@@ -1,5 +1,5 @@
 """Repository layer for statistics - single source of truth aggregating from PostgreSQL"""
-from datetime import datetime, timezone, timedelta, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, List, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import func

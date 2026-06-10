@@ -17,6 +17,11 @@ RUN useradd -m -s /bin/bash cowrie
 
 # Copy config with JSON logging enabled
 COPY cowrie.cfg /cowrie/cowrie-git/etc/cowrie.cfg
+COPY userdb.txt /cowrie/cowrie-git/etc/userdb.txt
+
+# Copy userdb to pip package location (where Cowrie looks for it)
+RUN mkdir -p /cowrie/cowrie-env/lib/python3.11/site-packages/cowrie/data/etc
+COPY userdb.txt /cowrie/cowrie-env/lib/python3.11/site-packages/cowrie/data/etc/userdb.txt
 
 # Create log/lib directories with proper permissions for cowrie user
 # Cowrie pip package creates var/log/cowrie/ and var/lib/cowrie/ relative to WORKDIR
