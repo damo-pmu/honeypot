@@ -1,0 +1,18 @@
+<div class="stats-grid">
+  <article class="card">
+    <p class="metric-label">Active Sessions</p>
+    <p class="metric-value" id="stat-sessions">{{ stats.get('active_sessions', 0) }}</p>
+  </article>
+  <article class="card">
+    <p class="metric-label">Unique IPs</p>
+    <p class="metric-value" id="stat-ips">{{ stats.get('unique_attackers', 0) }}</p>
+  </article>
+  <article class="card">
+    <p class="metric-label">High Threat</p>
+    <p class="metric-value" id="stat-threat">{{ stats.get('high_threat_count', 0) }}</p>
+  </article>
+  <article class="card">
+    <p class="metric-label">24h Attacks</p>
+    <p class="metric-value" id="stat-attacks">{{ stats.get('attacks_24h', 0) }}</p>
+  </article>
+</div>

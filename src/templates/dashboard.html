@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% set active_page = 'dashboard' %}
 
 {% block title %}Honeypot SOC Dashboard{% endblock %}
 
@@ -12,66 +13,74 @@
 .nav-links a { color: #ccc; text-decoration: none; padding: 6px 12px; border-radius: 4px; transition: all 0.2s; font-size: 14px; }
 .nav-links a:hover { background: #222; color: #0f0; }
 .nav-links a.active { background: #0f0; color: #000; font-weight: 600; }
+.app-shell { padding: 20px; }
+.dashboard-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.dashboard-title { margin: 0; color: #0f0; font-size: 24px; }
+.dashboard-meta { color: #888; font-size: 13px; }
+.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 16px; }
 {% endblock %}
 
 {% block content %}
-<nav class="dashboard-nav">
-    <div style="display: flex; align-items: center;">
-        <span class="status-indicator status-online" style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #0f0; margin-right: 8px;"></span>
-        <span style="color: #0f0; font-weight: 600;">🛡️ Honeypot SOC Dashboard</span>
-    </div>
-    <div class="nav-links">
-        <a href="/dashboard/" class="active">Dashboard</a>
-        <a href="/dashboard/analytics">Analytics</a>
-        <a href="/dashboard/settings">Settings</a>
-        <a href="/dashboard/api/health">API Health</a>
-    </div>
-</nav>
+{% include 'includes/navbar.html' %}
 
 <main class="app-shell">
-    <section class="dashboard-header">
-        <div>
-            <h1 class="dashboard-title">Honeypot SOC Dashboard</h1>
-            <p class="dashboard-meta">Vue d'ensemble en temps réel pour les analystes, avec flux et export de rapports.</p>
-        </div>
-        <div class="dashboard-meta">
-            <a href="javascript:location.reload()" class="secondary-button" id="refresh-button">Refresh</a>
-            <a href="/dashboard/api/export/threat-report" class="action-button">Exporter JSON</a>
-        </div>
-    </section>
-
-    <div class="stats-grid">
-        <article class="card">
-            <p class="metric-label">Active Sessions</p>
-            <p class="metric-value">{{ stats['active_sessions'] | default(0) }}</p>
-        </article>
-        <article class="card">
-            <p class="metric-label">Unique Attackers</p>
-            <p class="metric-value">{{ stats['unique_attackers'] | default(0) }}</p>
-        </article>
-        <article class="card">
-            <p class="metric-label">High Risk</p>
-            <p class="metric-value">{{ stats['high_threat_count'] | default(0) }}</p>
-        </article>
-        <article class="card">
-            <p class="metric-label">IOCs Extracted</p>
-            <p class="metric-value">{{ stats['ioc_count'] | default(0) }}</p>
-        </article>
+  <section class="dashboard-header">
+    <div>
+      <h1 class="dashboard-title">Honeypot SOC Dashboard</h1>
+      <p class="dashboard-meta">Vue d'ensemble en temps réel pour les analystes, avec flux et export de rapports.</p>
     </div>
+    <div class="dashboard-meta">
+      <a href="javascript:location.reload()" class="secondary-button" id="refresh-button">Refresh</a>
+      <a href="/dashboard/api/export/threat-report" class="action-button">Exporter JSON</a>
+    </div>
+  </section>
 
-    <section class="panel">
-        <div class="panel-header">
-            <h2>Recent Activity</h2>
-            <p class="dashboard-meta" id="live-feed-fallback">Flux temps réel en cours...</p>
-        </div>
-        <div id="live-feed" class="live-feed">Chargement...</div>
-    </section>
+  {% include 'includes/stats_cards.html' %}
+
+  <section class="panel">
+    <div class="panel-header">
+      <h2>Live Threat Feed</h2>
+      <p class="dashboard-meta">Flux temps réel des attaques en cours</p>
+    </div>
+    <div id="live-feed" class="live-feed">Chargement...</div>
+  </section>
+
+  <section style="margin-top: 20px;">
+    <div class="panel-header">
+      <h2>World Map</h2>
+      <p class="dashboard-meta"><a href="/dashboard/map" class="secondary-button">Voir la carte complète →</a></p>
+    </div>
+    <div id="mini-map" style="height: 280px; border-radius: 12px; border: 1px solid #223; background: #0a0a0a;"></div>
+  </section>
 </main>
 {% endblock %}
 
 {% block extra_js %}
 <script src="/static/js/dashboard.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    window.dashboardConfig = { feedPath: '/dashboard/api/live-feed?limit=12' };
+  window.dashboardConfig = { feedPath: '/dashboard/api/live-feed?limit=12' };
+
+  // Mini map for dashboard overview
+  const miniMap = L.map('mini-map').setView([20, 0], 2);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap', maxZoom: 18 }).addTo(miniMap);
+
+  async function loadMiniMap() {
+    const { items } = await (await fetch('/dashboard/api/live-feed?limit=50')).json();
+    const attackerMarkers = new Map();
+    items.forEach(a => {
+      const ip = a.data?.attacker_ip;
+      const geoip = a.data?.geoip;
+      if (ip && geoip?.lat && geoip?.lon) {
+        attackerMarkers.set(ip, { lat: geoip.lat, lon: geoip.lon, country: geoip.country || 'Unknown' });
+      }
+    });
+    attackerMarkers.forEach((m, ip) => {
+      L.circleMarker([m.lat, m.lon], { radius: 6, color: '#0f0', fillColor: '#0f0', fillOpacity: 0.6 })
+        .bindTooltip(ip, { permanent: false, direction: 'top' })
+        .addTo(miniMap);
+    });
+  }
+  loadMiniMap();
 </script>
 {% endblock %}

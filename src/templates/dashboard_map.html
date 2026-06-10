@@ -1,153 +1,158 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SOC Dashboard - World Map</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
-  <link rel="stylesheet" href="/static/css/dashboard.css">
-  <style>
-    body { font-family: 'Inter', sans-serif; background: #04111d; color: #e5efff; margin: 0; min-height: 100vh; }
-    :root { --color-primary: #0f0; --color-bg: #0a0a0a; --color-card: #111; --color-border: #223; --color-muted: #888; }
-    .dashboard-nav { display: flex; justify-content: space-between; align-items: center; background: #111; padding: 12px 20px; border-bottom: 1px solid #333; }
-    .nav-links { display: flex; gap: 12px; }
-    .nav-links a { color: #ccc; text-decoration: none; padding: 6px 12px; border-radius: 4px; font-size: 14px; transition: all 0.2s; }
-    .nav-links a:hover, .nav-links a.active { background: #0f0; color: #000; }
-    .app-shell { padding: 20px; }
-    .dashboard-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-    .dashboard-title { margin: 0; color: #0f0; font-size: 24px; }
-    .dashboard-meta { color: #888; font-size: 13px; }
-    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 16px; }
-    .card { background: #111; border: 1px solid #222; border-radius: 8px; padding: 16px; }
-    .metric-label { margin: 0; color: #888; font-size: 12px; }
-    .metric-value { margin: 8px 0 0 0; color: #0f0; font-size: 24px; font-weight: 600; }
-    .map-grid { display: grid; grid-template-columns: 1fr 380px; gap: 16px; margin-top: 16px; }
-    #world-map { height: 520px; border-radius: 12px; border: 1px solid #223; background: #0a0a0a; }
-    .attack-feed { max-height: 520px; overflow-y: auto; background: #0a0a0a; border-radius: 12px; }
-    .attack-item { padding: 12px; cursor: pointer; border-left: 2px solid transparent; transition: all 0.2s ease; font-size: 13px; }
-    .attack-item:hover { background: #1a1a1a; border-left-color: #0f0; }
-    .attack-item.selected { background: #0f0; color: #000; border-left-color: #0f0; }
-    .attack-item .ip { font-family: monospace; color: #0f0; }
-    .attack-item .severity { float: right; font-size: 11px; padding: 2px 6px; border-radius: 3px; background: #333; }
-    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 1000; }
-    .modal-box { position: absolute; top: 10%; left: 50%; transform: translateX(-50%); background: #111; border: 1px solid #223; border-radius: 12px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto; }
-    .modal-header { padding: 16px 20px; border-bottom: 1px solid #223; display: flex; justify-content: space-between; }
-    .modal-body { padding: 16px 20px; }
-  </style>
-</head>
-<body>
-  <nav class="dashboard-nav">
-    <div style="display: flex; align-items: center; gap: 12px;">
-      <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #0f0;"></span>
-      <span style="color: #0f0; font-weight: 600;">🛡️ Honeypot SOC</span>
-    </div>
-    <div class="nav-links">
-      <a href="/dashboard/">Dashboard</a>
-      <a href="/dashboard/map" class="active">World Map</a>
-      <a href="/dashboard/analytics">Analytics</a>
-    </div>
-  </nav>
+{% extends 'base.html' %}
+{% set active_page = 'map' %}
 
-  <main class="app-shell">
-    <section class="dashboard-header">
-      <div>
-        <h1 class="dashboard-title">🌍 World Attack Map</h1>
-        <p class="dashboard-meta">Interactive map • Click marker or attack to link details</p>
+{% block title %}SOC Dashboard - World Map{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+<style>
+  .dashboard-nav {
+    display: flex; justify-content: space-between; align-items: center;
+    background: #111; padding: 12px 20px; border-bottom: 1px solid #333;
+  }
+  .nav-links { display: flex; gap: 12px; }
+  .nav-links a { color: #ccc; text-decoration: none; padding: 6px 12px; border-radius: 4px; font-size: 14px; transition: all 0.2s; }
+  .nav-links a:hover, .nav-links a.active { background: #0f0; color: #000; }
+  .app-shell { padding: 20px; }
+  .dashboard-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .dashboard-title { margin: 0; color: #0f0; font-size: 24px; }
+  .dashboard-meta { color: #888; font-size: 13px; }
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 16px; }
+  .card { background: #111; border: 1px solid #222; border-radius: 8px; padding: 16px; }
+  .metric-label { margin: 0; color: #888; font-size: 12px; }
+  .metric-value { margin: 8px 0 0 0; color: #0f0; font-size: 24px; font-weight: 600; }
+  .map-grid { display: grid; grid-template-columns: 1fr 380px; gap: 16px; margin-top: 16px; }
+  #world-map { height: 520px; border-radius: 12px; border: 1px solid #223; background: #0a0a0a; }
+  .attack-feed { max-height: 520px; overflow-y: auto; background: #0a0a0a; border-radius: 12px; }
+  .attack-item { padding: 12px; cursor: pointer; border-left: 2px solid transparent; transition: all 0.2s ease; font-size: 13px; }
+  .attack-item:hover { background: #1a1a1a; border-left-color: #0f0; }
+  .attack-item.selected { background: #0f0; color: #000; border-left-color: #0f0; }
+  .attack-item.selected .ip { color: #000; }
+  .attack-item.selected .severity { background: #000; color: #0f0; }
+  .attack-item.selected .attack-type { color: #000 !important; }
+  .attack-item .ip { font-family: monospace; color: #0f0; }
+  .attack-item .severity { float: right; font-size: 11px; padding: 2px 6px; border-radius: 3px; background: #333; }
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 1000; }
+  .modal-box { position: absolute; top: 10%; left: 50%; transform: translateX(-50%); background: #111; border: 1px solid #223; border-radius: 12px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto; }
+  .modal-header { padding: 16px 20px; border-bottom: 1px solid #223; display: flex; justify-content: space-between; }
+  .modal-body { padding: 16px 20px; }
+</style>
+{% endblock %}
+
+{% block content %}
+{% include 'includes/navbar.html' %}
+
+<main class="app-shell">
+  <section class="dashboard-header">
+    <div>
+      <h1 class="dashboard-title">🌍 World Attack Map</h1>
+      <p class="dashboard-meta">Interactive map • Click marker or attack to link details</p>
+    </div>
+  </section>
+
+  {% include 'includes/stats_cards.html' %}
+
+  <div class="map-grid">
+    <div id="world-map"></div>
+    <div class="attack-feed">
+      <div style="padding: 12px 16px; border-bottom: 1px solid #222;">
+        <h3 style="margin: 0; color: #0f0; font-size: 14px;">Live Attacks</h3>
       </div>
-    </section>
-
-    <div class="stats-grid">
-      <article class="card"><p class="metric-label">Active Sessions</p><p class="metric-value" id="stat-sessions">{{ stats['active_sessions'] | default(0) }}</p></article>
-      <article class="card"><p class="metric-label">Unique IPs</p><p class="metric-value" id="stat-ips">{{ stats['unique_attackers'] | default(0) }}</p></article>
-      <article class="card"><p class="metric-label">High Threat</p><p class="metric-value" id="stat-threat">{{ stats['high_threat_count'] | default(0) }}</p></article>
-      <article class="card"><p class="metric-label">24h Attacks</p><p class="metric-value" id="stat-attacks">{{ stats['attacks_24h'] | default(0) }}</p></article>
-    </div>
-
-    <div class="map-grid">
-      <div id="world-map"></div>
-      <div class="attack-feed">
-        <div style="padding: 12px 16px; border-bottom: 1px solid #222;">
-          <h3 style="margin: 0; color: #0f0; font-size: 14px;">Live Attacks</h3>
-        </div>
-        <div id="attack-feed-list"></div>
-      </div>
-    </div>
-  </main>
-
-  <div id="session-modal" class="modal-overlay" onclick="closeModal(event)">
-    <div class="modal-box" onclick="event.stopPropagation()">
-      <div class="modal-header">
-        <h3 id="modal-title" style="margin: 0; color: #0f0;"></h3>
-        <button onclick="closeModal()" style="background: #333; border: none; color: #fff; padding: 6px 12px; border-radius: 4px; cursor: pointer;">✕</button>
-      </div>
-      <div class="modal-body" id="modal-content"></div>
+      <div id="attack-feed-list"></div>
     </div>
   </div>
+</main>
 
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <script>
-    const map = L.map('world-map').setView([20, 0], 2);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap', maxZoom: 18 }).addTo(map);
-    const markerCluster = L.markerClusterGroup({ maxClusterRadius: 45 });
-    map.addLayer(markerCluster);
-    let selectedIP = null;
+<div id="session-modal" class="modal-overlay" onclick="closeModal(event)">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h3 id="modal-title" style="margin: 0; color: #0f0;"></h3>
+      <button onclick="closeModal()" style="background: #333; border: none; color: #fff; padding: 6px 12px; border-radius: 4px; cursor: pointer;">✕</button>
+    </div>
+    <div class="modal-body" id="modal-content"></div>
+  </div>
+</div>
+{% endblock %}
 
-    window.onAttackClick = async (ip) => {
-      selectedIP = ip;
-      document.querySelectorAll('.attack-item').forEach(el => el.classList.toggle('selected', el.dataset.ip === ip));
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script>
+  const map = L.map('world-map').setView([20, 0], 2);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap', maxZoom: 18 }).addTo(map);
+  const markerCluster = L.markerClusterGroup({ maxClusterRadius: 45 });
+  map.addLayer(markerCluster);
+  let selectedIP = null;
+
+  window.onAttackClick = async (ip) => {
+    selectedIP = ip;
+    document.querySelectorAll('.attack-item').forEach(el => el.classList.toggle('selected', el.dataset.ip === ip));
+    try {
       const data = await (await fetch(`/attackers/${ip}/geolocation`)).json();
       document.getElementById('modal-title').textContent = `${ip} • ${data.country || 'Unknown'}`;
       document.getElementById('modal-content').innerHTML = `
         <p><strong>Threat Score:</strong> ${data.threat_score || 0}</p>
         <p><strong>Attacks:</strong> ${data.attacks_count} • <strong>Sessions:</strong> ${data.sessions_count}</p>
         <h4 style="color: #0f0; margin-top: 16px; font-size: 13px;">Recent Attacks</h4>
-        ${data.recent_attacks.map(a => `<div style="padding: 4px 0; font-size: 12px;"><span style="color: #0f0;">${a.attack_type}</span> • ${a.severity}/100</div>`).join('')}
+        ${(data.recent_attacks || []).map(a => `<div style="padding: 4px 0; font-size: 12px;"><span style="color: #0f0;">${a.attack_type}</span> • ${a.severity}/100</div>`).join('')}
       `;
       document.getElementById('session-modal').style.display = 'block';
-    };
 
-    window.closeModal = (e) => {
-      if (e && e.target !== document.getElementById('session-modal')) return;
-      document.getElementById('session-modal').style.display = 'none';
-    };
-
-    async function loadAttacks() {
-      const { items } = await (await fetch('/dashboard/api/live-feed?limit=100')).json();
-      const byIP = new Map();
-      items.forEach(a => {
-        const ip = a.data?.attacker_ip;
-        if (!ip) return;
-        if (!byIP.has(ip)) byIP.set(ip, { ip, severity: a.data?.severity || 50, type: a.data?.attack_type || 'UNKNOWN' });
-      });
-
-      document.getElementById('attack-feed-list').innerHTML = Array.from(byIP.values()).slice(0, 100).map(d => `
-        <div class="attack-item" data-ip="${d.ip}" onclick="onAttackClick('${d.ip}')">
-          <span class="ip">${d.ip}</span>
-          <span class="severity">${d.severity}/100</span>
-          <div style="font-size: 11px; color: #888; margin-top: 4px;">${d.type}</div>
-        </div>
-      `).join('');
-
-      markerCluster.clearLayers();
-      items.forEach(a => {
-        const ip = a.data?.attacker_ip;
-        const geoip = a.data?.geoip;
-        if (ip && geoip?.lat && geoip?.lon) {
-          L.marker([geoip.lat, geoip.lon]).bindPopup(`
-            <div><h4>${ip}</h4><p>${geoip.country || 'Unknown'}</p>
-            <button onclick="onAttackClick('${ip}')" style="background: #0f0; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 12px;">View Details</button></div>
-          `).addTo(markerCluster);
-        }
-      });
+      // Center map on clicked IP marker
+      if (data.geoip?.lat && data.geoip?.lon) {
+        map.setView([data.geoip.lat, data.geoip.lon], 8);
+        markerCluster.getLayers().forEach(m => {
+          if (m.getLatLng().lat === data.geoip.lat && m.getLatLng().lng === data.geoip.lon) {
+            m.openPopup();
+          }
+        });
+      }
+    } catch (err) {
+      console.error('Failed to load geolocation:', err);
+      document.getElementById('modal-title').textContent = ip;
+      document.getElementById('modal-content').innerHTML = '<p style="color: #f55;">Error loading details</p>';
+      document.getElementById('session-modal').style.display = 'block';
     }
+  };
 
-    loadAttacks();
-    setInterval(loadAttacks, 30000);
-  </script>
-</body>
-</html>
+  window.closeModal = (e) => {
+    if (e && e.target !== document.getElementById('session-modal')) return;
+    document.getElementById('session-modal').style.display = 'none';
+  };
+
+  async function loadAttacks() {
+    const { items } = await (await fetch('/dashboard/api/live-feed?limit=100')).json();
+    const byIP = new Map();
+    items.forEach(a => {
+      const ip = a.data?.attacker_ip;
+      if (!ip) return;
+      if (!byIP.has(ip)) byIP.set(ip, { ip, severity: a.data?.severity || 50, type: a.data?.attack_type || 'UNKNOWN' });
+    });
+
+    document.getElementById('attack-feed-list').innerHTML = Array.from(byIP.values()).slice(0, 100).map(d => `
+      <div class="attack-item" data-ip="${d.ip}" onclick="onAttackClick('${d.ip}')">
+        <span class="ip">${d.ip}</span>
+        <span class="severity">${d.severity}/100</span>
+        <div class="attack-type">${d.type}</div>
+      </div>
+    `).join('');
+
+    markerCluster.clearLayers();
+    items.forEach(a => {
+      const ip = a.data?.attacker_ip;
+      const geoip = a.data?.geoip;
+      if (ip && geoip?.lat && geoip?.lon) {
+        L.marker([geoip.lat, geoip.lon]).bindPopup(`
+          <div><h4>${ip}</h4><p>${geoip.country || 'Unknown'}</p>
+          <button onclick="onAttackClick('${ip}')" style="background: #0f0; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 12px;">View Details</button></div>
+        `).addTo(markerCluster);
+      }
+    });
+  }
+
+  loadAttacks();
+  setInterval(loadAttacks, 30000);
+</script>
+{% endblock %}

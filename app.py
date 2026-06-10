@@ -70,6 +70,24 @@ app.include_router(dashboard_v3_router)
 app.include_router(internal_router)
 
 
+# Dashboard map route
+from fastapi import Request, Response
+from jinja2 import Environment, FileSystemLoader
+templates = Environment(loader=FileSystemLoader("src/templates"))
+
+@app.get("/dashboard/map", response_class=Response)
+def dashboard_map(request: Request, db = None):
+    """Serve map dashboard page"""
+    from src.services.statistics_service import StatisticsService
+    db_session = next(get_db()) if 'get_db' in dir() else None
+    if db_session:
+        stats = StatisticsService(db_session).get_dashboard_stats()
+    else:
+        stats = {}
+    html = templates.get_template("dashboard_map.html").render(request=request, stats=stats)
+    return Response(content=html, media_type="text/html")
+
+
 @app.on_event("startup")
 async def startup_event():
     """Initialize database on app startup"""

@@ -25,10 +25,14 @@ from src.services.statistics_service import StatisticsService
 from src.api.middleware.session import get_session, create_session, clear_session
 
 # Templates directory
-templates = Environment(loader=FileSystemLoader("templates"))
+templates = Environment(loader=FileSystemLoader("src/templates"))
 
 # Initialize router with auth prefix
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
+
+# ===== INTERNAL ENDPOINTS (unprotected - used by worker) =====
+# Separate router for internal endpoints (worker calls without /dashboard prefix)
+internal_router = APIRouter(tags=["internal"])
 
 
 # WebSocket connection manager for real-time updates
@@ -81,7 +85,7 @@ def dashboard_home(request: Request, db: Session = Depends(get_db)):
         stats = {"active_sessions": 0, "unique_attackers": 0, "high_threat_count": 0, "ioc_count": 0}
 
     html = templates.get_template("dashboard.html").render(
-        request=request, stats=stats, active_page="home"
+        request=request, stats=stats, active_page="dashboard"
     )
     return HTMLResponse(content=html)
 
@@ -180,12 +184,6 @@ def get_session_with_attacks(session_id: str, db: Session = Depends(get_db)):
     }
 
 
-# ===== INTERNAL ENDPOINTS (unprotected - used by worker) =====
-
-# Separate router for internal endpoints (worker calls without /dashboard prefix)
-internal_router = APIRouter(tags=["internal"])
-
-
 @internal_router.post("/internal/sessions", status_code=201)
 def internal_create_session(request: SessionCreateRequest, db: Session = Depends(get_db)):
     """Internal endpoint - create session from Cowrie worker"""
@@ -219,13 +217,29 @@ def internal_end_session(session_id: str, db: Session = Depends(get_db)):
 @internal_router.post("/events", status_code=201)
 def internal_log_event(request: EventCreateRequest, db: Session = Depends(get_db)):
     """Internal endpoint - log attack event from worker"""
-    # Ensure attacker exists
+    from src.services.geoip_service import enrich_ip_sync
+    
+    # Ensure attacker exists with GeoIP enrichment
     db_attacker = db.query(AttackerDB).filter(AttackerDB.ip == request.attacker_ip).first()
     if not db_attacker:
-        db_attacker = AttackerDB(ip=request.attacker_ip, threat_score=request.severity)
+        # Enrich attacker with GeoIP on creation
+        geoip_data = enrich_ip_sync(request.attacker_ip)
+        db_attacker = AttackerDB(
+            ip=request.attacker_ip, 
+            threat_score=request.severity,
+            geoip=geoip_data if geoip_data else None,
+            country=geoip_data.get("country") if geoip_data else None
+        )
         db.add(db_attacker)
         db.commit()
-
+    
+    # Ensure session exists (required for FK constraint)
+    db_session = db.query(SessionDB).filter(SessionDB.id == request.session_id).first()
+    if not db_session:
+        db_session = SessionDB(id=request.session_id, attacker_ip=request.attacker_ip, protocol=request.protocol)
+        db.add(db_session)
+        db.commit()
+    
     # Log event using AttackDB model
     event = AttackDB(
         session_id=request.session_id,
