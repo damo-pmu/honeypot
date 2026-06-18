@@ -1,0 +1,1 @@
+# Test Workflow for Jira Issue SCRUM-6\n\nThis file demonstrates the workflow:\n1. Create Jira issue\n2. Create feature branch\n3. Make commits\n4. Create PR\n5. Update Jira status\n\nIssue: SCRUM-6\nSummary: TEST: Création d'issue Jira de test pour debug\nStatus: In Progress
