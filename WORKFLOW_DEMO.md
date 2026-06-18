@@ -15,6 +15,6 @@ Status: In Progress
 - [x] Création de l'issue Jira SCRUM-6
 - [x] Création de la branche feature/SCRUM-6-test-jira-issue-creation-workflow-demo
 - [x] Ajout du fichier de démonstration
-- [ ] Création de la pull request
+- [x] Création de la pull request #2
 - [ ] Fusion de la pull request
 - [ ] Mise à jour de l'issue Jira en "Terminé"
