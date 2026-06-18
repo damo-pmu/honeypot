@@ -1,0 +1,1 @@
+# Test pour l'issue SCRUM-7\n\nCette modification a été faite dans le cadre du workflow de test Jira/GitHub pour l'issue SCRUM-7.\n\n- Issue créée : SCRUM-7\n- Description : TEST: Création d'issue réussie avec authentification vérifiée\n- Date : Thu Jun 18 12:56:02 UTC 2026
