@@ -1,0 +1,22 @@
+[honeypot]
+ssh_port = 2222
+telnet_port = 23
+auth_none = false
+auth_password = true
+auth_publickey = false
+allow_agent_forwarding = false
+
+[output_jsonlog]
+enabled = true
+logfile = /cowrie/var/log/cowrie/cowrie.json
+
+[output_telnet]
+enabled = true
+
+[output_postgresql]
+enabled = true
+host = postgres
+port = 5432
+database = honeypot
+user = honeypot
+pass = {{PG_PASS}}
