@@ -3,6 +3,40 @@ const refreshButton = document.getElementById('refresh-button');
 const fallbackNotice = document.getElementById('live-feed-fallback');
 const statsValues = document.querySelectorAll('.metric-value');
 
+// Health status element references
+const healthDot = document.querySelector('#health-status-indicator-dot');
+const healthText = document.getElementById('health-status-text');
+
+// Health status polling
+async function fetchHealthStatus() {
+    if (!healthDot || !healthText) {
+        return;
+    }
+
+    try {
+        const response = await fetch('/health', { credentials: 'include', cache: 'no-store' });
+        if (response.ok) {
+            const data = await response.json();
+            if (data.status === 'ok') {
+                setHealthStatus('ok', 'OK / En ligne');
+            } else {
+                setHealthStatus('error', 'Erreur');
+            }
+        } else {
+            setHealthStatus('error', 'Erreur / Hors ligne');
+        }
+    } catch (error) {
+        setHealthStatus('error', 'Erreur / Hors ligne');
+    }
+}
+
+function setHealthStatus(state, text) {
+    healthDot.classList.remove('error');
+    healthDot.style.background = state === 'ok' ? '#0f0' : '#ff5f57';
+    healthText.style.color = state === 'ok' ? '#0f0' : '#ff5f57';
+    healthText.textContent = text;
+}
+
 async function fetchLiveFeed() {
     if (!liveFeedElement) {
         return;
@@ -112,7 +146,7 @@ function connectLiveSocket() {
 
     ws.addEventListener('error', () => {
         if (fallbackNotice) {
-            fallbackNotice.textContent = 'Impossible d’établir le WebSocket. Le flux est toujours disponible via HTTP.';
+            fallbackNotice.textContent = "Impossible d'établir le WebSocket. Le flux est toujours disponible via HTTP.";
         }
     });
 }
@@ -132,3 +166,6 @@ setInterval(() => {
     fetchLiveFeed();
     refreshStats();
 }, 12000);
+
+// Initialize health status check
+fetchHealthStatus();

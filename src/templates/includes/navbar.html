@@ -7,4 +7,8 @@
     <a href="/dashboard/map" class="{{ 'active' if active_page == 'map' }}">World Map</a>
     <a href="/dashboard/analytics" class="{{ 'active' if active_page == 'analytics' }}">Analytics</a>
   </div>
+  <div id="health-status-indicator" class="health-indicator" role="status" aria-label="Statut du serveur" style="display: flex; align-items: center; gap: 8px; margin-left: auto; padding-right: 20px;">
+    <span class="health-dot" id="health-status-indicator-dot" aria-hidden="true" style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #666; transition: background 0.3s ease;"></span>
+    <span id="health-status-text" class="status-text" style="color: #9cb2d2; font-size: 13px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;">Vérification...</span>
+  </div>
 </nav>
